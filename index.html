@@ -1,202 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bookstore Events</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Independent Bookstore Events</title>
+    <!-- No external libraries - pure vanilla CSS -->
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <!-- ===== HEADER WITH LOGO IMAGE ===== -->
-    <header>
-        <nav>
-            <div class="logo">
-                <!-- ===== LOGO IMAGE ===== -->
-                <img 
-                    src="BookStoreEventsLogo.png" 
-                    alt="Bookstore Events - Connecting Readers, Hosting Stories" 
-                    class="logo-image"
-                >
-            </div>
-            
-            <!-- Hamburger -->
-            <button class="hamburger" id="hamburger" aria-label="Toggle navigation">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-            </button>
-
-            <ul class="nav-links" id="navLinks">
-                <li><a href="#events-section">Events</a></li>
-                <li><a href="#add-event">Add Event</a></li>
-                <li><a href="#about">About</a></li>
-            </ul>
-        </nav>
-    </header>
-
-    <!-- ===== MAIN CONTENT ===== -->
-    <main>
-        <!-- HERO -->
-        <section class="hero">
-            <div class="hero-content">
-                <h2>Discover Local Bookstore Events</h2>
-                <p>Find readings, signings, and community gatherings at independent bookstores near you.</p>
-                <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="Search events by title or location..." aria-label="Search events">
-                    <button type="button" id="searchBtn" aria-label="Execute search"><i class="fas fa-search"></i> Search</button>
+    <div class="app-wrapper">
+        <!-- Header Section -->
+        <header class="app-header" role="banner">
+            <div class="header-content">
+                <div class="logo-container">
+                    <img src="bookstore-logo.svg" alt="Independent Bookstore Logo" class="logo" />
+                    <h1 class="app-title">📚 Independent Bookstore</h1>
                 </div>
+                <p class="app-subtitle">Discover, Participate &amp; Host Events</p>
             </div>
-        </section>
+        </header>
 
-        <!-- EVENTS -->
-        <section id="events-section">
-            <div class="section-header">
-                <div class="header-left">
-                    <h2>Upcoming Events</h2>
-                    <span class="event-count" id="eventCount">0 events</span>
-                </div>
-                <div class="filter-controls">
-                    <label for="filterSelect" class="sr-only">Filter events by category</label>
-                    <select id="filterSelect" aria-label="Filter events">
-                        <option value="all">All Events</option>
-                        <option value="reading">Book Reading</option>
-                        <option value="launch">Book Launch</option>
-                        <option value="meet">Author Meet & Signing</option>
-                        <option value="club">Book Club Meeting</option>
-                        <option value="poetry">Poetry</option>
-                        <option value="storytelling">Storytelling Session</option>
-                        <option value="speech">Speech</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-            </div>
+        <!-- Main Content -->
+        <main class="app-main" role="main">
+            <!-- Search & Filter Section -->
+            <section class="controls-section" aria-label="Search and filter events">
+                <div class="controls-wrapper">
+                    <!-- Search -->
+                    <div class="search-wrapper">
+                        <span class="search-icon" aria-hidden="true">🔍</span>
+                        <input
+                            type="search"
+                            id="searchInput"
+                            class="search-input"
+                            placeholder="Search events by title, venue, or category..."
+                            aria-label="Search events"
+                            autocomplete="off"
+                        />
+                        <button class="search-clear" id="clearSearch" aria-label="Clear search">✕</button>
+                    </div>
 
-            <!-- Loading -->
-            <div id="loadingIndicator" class="loading-hidden" role="status" aria-live="polite">
-                <div class="spinner" aria-hidden="true"></div>
-                <p>Loading events...</p>
-            </div>
+                    <!-- Filter Dropdown -->
+                    <div class="filter-wrapper">
+                        <label for="categoryFilter" class="filter-label">Category</label>
+                        <select id="categoryFilter" class="filter-select" aria-label="Filter events by category">
+                            <option value="all">All Categories</option>
+                            <option value="book-club">Book Club</option>
+                            <option value="author-event">Author Event</option>
+                            <option value="workshop">Workshop</option>
+                            <option value="reading">Reading</option>
+                            <option value="signing">Book Signing</option>
+                        </select>
+                    </div>
+
+                    <!-- Add Event Button -->
+                    <button id="openAddEventModal" class="add-event-btn" aria-label="Add new event">
+                        <span aria-hidden="true">+</span> Add Event
+                    </button>
+                </div>
+            </section>
 
             <!-- Events Grid -->
-            <div id="eventsContainer" class="events-grid" role="list"></div>
+            <section aria-label="Events list">
+                <div id="eventsContainer" class="events-grid" role="list">
+                    <!-- Events will be rendered here by JavaScript -->
+                </div>
 
-            <!-- Empty State -->
-            <div id="emptyState" class="empty-state hidden" role="status">
-                <i class="fas fa-book-open" aria-hidden="true"></i>
-                <p>No events found</p>
-                <p class="empty-sub">Try adjusting your search or filter</p>
+                <!-- Empty State -->
+                <div id="emptyState" class="empty-state" role="status" aria-live="polite" hidden>
+                    <p class="empty-icon" aria-hidden="true">📭</p>
+                    <h2 class="empty-title">No Events Found</h2>
+                    <p class="empty-description">Try adjusting your search or filter criteria.</p>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite" hidden>
+                    <div class="spinner" aria-hidden="true"></div>
+                    <p>Loading events...</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer" role="contentinfo">
+            <p>&copy; 2026 Independent Bookstore. All rights reserved.</p>
+            <p class="footer-telemetry">📊 Analytics: User interactions are being tracked</p>
+        </footer>
+    </div>
+
+    <!-- Add Event Modal -->
+    <div id="addEventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle" class="modal-title">Add New Event</h2>
+                <button id="closeModal" class="modal-close" aria-label="Close modal">✕</button>
             </div>
 
-            <!-- Explore More -->
-            <div class="explore-container">
-                <button type="button" id="exploreBtn" class="explore-btn" onclick="return false;">
-                    <span class="explore-text">Explore More Events</span>
-                    <span class="explore-icon"><i class="fas fa-chevron-down" aria-hidden="true"></i></span>
-                </button>
-            </div>
-        </section>
+            <form id="addEventForm" novalidate>
+                <div class="form-group">
+                    <label for="eventTitle">Event Title <span aria-hidden="true" class="required-star">*</span></label>
+                    <input type="text" id="eventTitle" class="form-input" required aria-required="true" placeholder="e.g., Mystery Book Club Night" maxlength="100" />
+                    <span class="form-error" id="titleError" role="alert"></span>
+                </div>
 
-        <!-- ADD EVENT -->
-        <section id="add-event">
-            <div class="form-container">
-                <h2><i class="fas fa-plus-circle" aria-hidden="true"></i> Add New Event</h2>
-                <p class="form-subtitle">Fill in the details below to add a new event</p>
-                
-                <form id="eventForm" novalidate aria-label="Add event form">
-                    <!-- Title -->
-                    <div class="form-group">
-                        <label for="eventTitle">Event Title <span class="required">*</span></label>
-                        <input type="text" id="eventTitle" placeholder="e.g., Author Reading" required aria-required="true" maxlength="100">
-                        <div class="error-message" id="titleError" role="alert"></div>
+                <div class="form-group">
+                    <label for="eventVenue">Venue <span aria-hidden="true" class="required-star">*</span></label>
+                    <input type="text" id="eventVenue" class="form-input" required aria-required="true" placeholder="e.g., Main Store - 123 Book St" maxlength="100" />
+                    <span class="form-error" id="venueError" role="alert"></span>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="eventDate">Date <span aria-hidden="true" class="required-star">*</span></label>
+                        <input type="date" id="eventDate" class="form-input" required aria-required="true" />
+                        <span class="form-error" id="dateError" role="alert"></span>
                     </div>
-
-                    <!-- Venue -->
-                    <div class="form-group">
-                        <label for="eventVenue">Venue <span class="required">*</span></label>
-                        <input type="text" id="eventVenue" placeholder="e.g., The Book Nook, 123 Main St" required aria-required="true">
-                        <div class="error-message" id="venueError" role="alert"></div>
+                    <div class="form-group half">
+                        <label for="eventTime">Time <span aria-hidden="true" class="required-star">*</span></label>
+                        <input type="time" id="eventTime" class="form-input" required aria-required="true" />
+                        <span class="form-error" id="timeError" role="alert"></span>
                     </div>
+                </div>
 
-                    <!-- Category -->
-                    <div class="form-group">
-                        <label for="eventCategory">Category <span class="required">*</span></label>
-                        <select id="eventCategory" required aria-required="true">
-                            <option value="">Select a category</option>
-                            <option value="reading">Book Reading</option>
-                            <option value="launch">Book Launch</option>
-                            <option value="meet">Author Meet & Signing</option>
-                            <option value="club">Book Club Meeting</option>
-                            <option value="poetry">Poetry</option>
-                            <option value="storytelling">Storytelling Session</option>
-                            <option value="speech">Speech</option>
-                            <option value="other">Other</option>
-                        </select>
-                        <div class="error-message" id="categoryError" role="alert"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="eventCategory">Category <span aria-hidden="true" class="required-star">*</span></label>
+                    <select id="eventCategory" class="form-input" required aria-required="true">
+                        <option value="">Select a category</option>
+                        <option value="book-club">Book Club</option>
+                        <option value="author-event">Author Event</option>
+                        <option value="workshop">Workshop</option>
+                        <option value="reading">Reading</option>
+                        <option value="signing">Book Signing</option>
+                    </select>
+                    <span class="form-error" id="categoryError" role="alert"></span>
+                </div>
 
-                    <!-- Date -->
-                    <div class="form-group">
-                        <label for="eventDate">Date <span class="required">*</span></label>
-                        <input type="date" id="eventDate" required aria-required="true">
-                        <div class="error-message" id="dateError" role="alert"></div>
-                    </div>
+                <div class="form-group">
+                    <label for="eventDescription">Description <span aria-hidden="true" class="required-star">*</span></label>
+                    <textarea id="eventDescription" class="form-input" required aria-required="true" placeholder="Describe your event..." maxlength="500" rows="4"></textarea>
+                    <span class="form-error" id="descriptionError" role="alert"></span>
+                    <span class="char-count"><span id="charCount">0</span>/500</span>
+                </div>
 
-                    <!-- Time -->
-                    <div class="form-group">
-                        <label for="eventTime">Time <span class="required">*</span></label>
-                        <input type="time" id="eventTime" required aria-required="true">
-                        <div class="error-message" id="timeError" role="alert"></div>
-                    </div>
+                <!-- Admin Password for event addition -->
+                <div class="form-group">
+                    <label for="adminPassword">Admin Password <span aria-hidden="true" class="required-star">*</span></label>
+                    <input type="password" id="adminPassword" class="form-input" required aria-required="true" placeholder="Enter admin password" />
+                    <span class="form-error" id="passwordError" role="alert"></span>
+                    <small class="form-hint">Default: admin123 (configurable via environment variables)</small>
+                </div>
 
-                    <!-- Description -->
-                    <div class="form-group">
-                        <label for="eventDescription">Description</label>
-                        <textarea id="eventDescription" placeholder="Brief description (max 300 characters)" maxlength="300"></textarea>
-                        <div class="char-count" id="charCount">0 / 300</div>
-                    </div>
-
-                    <!-- Password -->
-                    <div class="form-group">
-                        <label for="eventPassword">Admin Password <span class="required">*</span></label>
-                        <div class="password-input-wrapper">
-                            <input type="password" id="eventPassword" placeholder="Enter admin password" required aria-required="true">
-                            <button type="button" id="togglePassword" aria-label="Toggle password visibility"><i class="fas fa-eye"></i></button>
-                        </div>
-                        <small>Default password: <strong>admin123</strong></small>
-                        <div class="error-message" id="passwordError" role="alert"></div>
-                    </div>
-
-                    <!-- Actions -->
-                    <div class="form-actions">
-                        <button type="submit" id="submitBtn"><i class="fas fa-plus" aria-hidden="true"></i> Add Event</button>
-                        <button type="reset" id="resetBtn"><i class="fas fa-undo" aria-hidden="true"></i> Clear Form</button>
-                    </div>
-
-                    <!-- Success -->
-                    <div id="formSuccess" class="success-message hidden" role="status">
-                        <i class="fas fa-check-circle" aria-hidden="true"></i> Event added successfully!
-                    </div>
-                </form>
-            </div>
-        </section>
-
-        <!-- ABOUT -->
-        <section id="about">
-            <div class="about-container">
-                <h2>About Us</h2>
-                <p>We are a community-driven platform connecting book lovers with independent bookstores. Discover local events, meet authors, and celebrate the love of reading.</p>
-            </div>
-        </section>
-    </main>
-
-    <!-- FOOTER -->
-    <footer>
-        <div class="footer-content">
-            <p>&copy; 2026 Bookstore Events. All rights reserved.</p>
-            <p class="footer-note">Supporting local bookstores and communities.</p>
+                <div class="form-actions">
+                    <button type="button" id="cancelModal" class="btn-secondary">Cancel</button>
+                    <button type="submit" id="submitEvent" class="btn-primary">Add Event</button>
+                </div>
+            </form>
         </div>
-    </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="polite" hidden>
+        <span id="toastMessage"></span>
+    </div>
 
     <script src="script.js"></script>
 </body>
