@@ -1,10 +1,10 @@
 /**
  * Vercel Serverless Function
- * Password verification API - Password GitHub pe nahi dikhega
+ * Password never exposed to GitHub! 
  */
 
 export default async function handler(req, res) {
-    // ✅ Only POST requests allow karo
+    // ✅ Only POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ 
             error: 'Method not allowed. Use POST.' 
@@ -12,14 +12,11 @@ export default async function handler(req, res) {
     }
 
     try {
-        var body = req.body;
-        var password = body.password;
+        const { password } = req.body;
 
-        // ✅ Password environment variable se aayega
-        // Vercel dashboard mein ADMIN_PASSWORD set karna hoga
-        var adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        // ✅ Password from environment variable
+        const adminPassword = process.env.ADMIN_PASSWORD;
 
-        // ✅ Password match karo
         if (password === adminPassword) {
             return res.status(200).json({ 
                 valid: true,
