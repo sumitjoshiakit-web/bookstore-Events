@@ -1,19 +1,18 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "verify-password.js",
-      "use": "@vercel/node"
+  "functions": {
+    "verify-password.js": {
+      "runtime": "@vercel/node@2"
     }
-  ],
+  },
   "routes": [
     {
-      "src": "verify-password",
-      "dest": "verify-password.js"
+      "src": "/api/verify-password",
+      "dest": "/verify-password.js"
     },
     {
       "src": "/(.*)",
-      "dest": "index.html"
+      "dest": "/index.html"
     }
   ]
 }
