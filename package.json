@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vercel dev",
     "build": "echo \"Build complete\"",
-    "start": "vercel start"
+    "start": "vercel start",
+    "lint": "eslint script.js"
   },
   "keywords": [
     "bookstore",
@@ -17,6 +18,8 @@
   "author": "Sumit Joshi",
   "license": "MIT",
   "devDependencies": {
+    "eslint": "^9.0.0",
+    "globals": "^15.0.0",
     "vercel": "^34.0.0"
   }
 }
