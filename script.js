@@ -53,7 +53,7 @@ function sanitizeInput(input) {
     if (typeof input !== 'string') {
         return '';
     }
-    return input.trim();
+    return input.trim().replace(/\0/g, '');
 }
 
 function generateId() {
@@ -90,7 +90,6 @@ function showToast(message, type = 'info') {
 
 function setSubmitLoading(isLoading) {
     DOM.submitButton.disabled = isLoading;
-    
     if (isLoading) {
         DOM.submitButton.setAttribute('aria-busy', 'true');
         DOM.submitButton.textContent = 'Verifying...';
@@ -108,44 +107,39 @@ function validateForm(data) {
     const description = data.description.trim();
 
     if (title.length < 2 || title.length > 100) {
-        errors.title = 'Title must be between 2 and 100 characters';
+        errors.title = 'Title must be between 2 and 100 characters.';
     }
 
     if (venue.length < 2 || venue.length > 100) {
-        errors.venue = 'Venue must be between 2 and 100 characters';
+        errors.venue = 'Venue must be between 2 and 100 characters.';
     }
 
     if (!data.date) {
-        errors.date = 'Please select a date';
+        errors.date = 'Please select a date.';
     } else {
         const selectedDate = new Date(data.date + 'T00:00:00');
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         if (Number.isNaN(selectedDate.getTime())) {
-            errors.date = 'Please enter a valid date';
-        } else if (selectedDate < today) {
-            errors.date = 'Date cannot be in the past';
+            errors.date = 'Please enter a valid date.';
         }
     }
 
     if (!data.time) {
-        errors.time = 'Please select a time';
+        errors.time = 'Please select a time.';
     } else if (!/^\d{2}:\d{2}$/.test(data.time)) {
-        errors.time = 'Please enter a valid time';
+        errors.time = 'Please enter a valid time.';
     }
 
     const validCategories = ['book-club', 'author-event', 'workshop', 'reading', 'signing'];
     if (!validCategories.includes(data.category)) {
-        errors.category = 'Please select a valid category';
+        errors.category = 'Please select a valid category.';
     }
 
     if (description.length < 5 || description.length > 500) {
-        errors.description = 'Description must be between 5 and 500 characters';
+        errors.description = 'Description must be between 5 and 500 characters.';
     }
 
     if (typeof data.password !== 'string' || data.password.trim() === '') {
-        errors.password = 'Admin password is required';
+        errors.password = 'Admin password is required.';
     }
 
     return errors;
@@ -159,17 +153,13 @@ async function verifyAdminPassword(password) {
     try {
         const response = await fetch('/api/verify-password', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ password })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+            signal: AbortSignal.timeout(10000)
         });
 
         if (response.status === 401) {
-            return {
-                valid: false,
-                networkError: false
-            };
+            return { valid: false, networkError: false };
         }
 
         if (!response.ok) {
@@ -177,14 +167,7 @@ async function verifyAdminPassword(password) {
         }
 
         const data = await response.json();
-
-        if (data.valid === true) {
-            logAnalytics('PASSWORD_VERIFIED', { success: true });
-            return { valid: true, networkError: false };
-        }
-
-        logAnalytics('PASSWORD_VERIFIED', { success: false });
-        return { valid: false, networkError: false };
+        return { valid: data.valid === true, networkError: false };
 
     } catch (error) {
         console.error('Password verification error:', error);
@@ -272,18 +255,14 @@ function addEvent(eventData) {
 }
 
 function deleteEvent(eventId) {
-    const eventIndex = events.findIndex(e => e.id === eventId);
-    if (eventIndex === -1) return false;
+    const index = events.findIndex(e => e.id === eventId);
+    if (index === -1) return false;
     
-    const deletedEvent = events[eventIndex];
-    events.splice(eventIndex, 1);
+    const deleted = events[index];
+    events.splice(index, 1);
     saveEventsToStorage(events);
     
-    logAnalytics('DELETE_EVENT', { 
-        eventId: eventId, 
-        category: deletedEvent.category 
-    });
-    
+    logAnalytics('DELETE_EVENT', { eventId, category: deleted.category });
     return true;
 }
 
@@ -295,7 +274,7 @@ function toggleParticipation(eventId) {
     saveEventsToStorage(events);
     
     logAnalytics('PARTICIPATE_TOGGLE', { 
-        eventId: eventId, 
+        eventId, 
         status: event.participants === 1 ? 'joined' : 'left' 
     });
     
@@ -308,7 +287,6 @@ function toggleParticipation(eventId) {
 
 function renderEvents() {
     DOM.loadingSpinner.hidden = false;
-    DOM.emptyState.hidden = true;
     DOM.eventsContainer.replaceChildren();
 
     const eventsToRender = filteredEvents;
@@ -319,15 +297,14 @@ function renderEvents() {
         return;
     }
 
+    DOM.emptyState.hidden = true;
     const fragment = document.createDocumentFragment();
     eventsToRender.forEach(event => {
         fragment.appendChild(createEventCard(event));
     });
-
     DOM.eventsContainer.appendChild(fragment);
-    DOM.loadingSpinner.hidden = true;
-    DOM.emptyState.hidden = true;
 
+    DOM.loadingSpinner.hidden = true;
     logAnalytics('RENDER_EVENTS', { count: eventsToRender.length });
 }
 
@@ -335,9 +312,6 @@ function createEventCard(event) {
     const card = document.createElement('article');
     card.className = 'event-card';
     card.setAttribute('role', 'listitem');
-    card.setAttribute('aria-label', 'Event: ' + event.title);
-
-    const isParticipating = event.participants > 0;
 
     // Header
     const header = document.createElement('div');
@@ -380,10 +354,10 @@ function createEventCard(event) {
 
     const participateBtn = document.createElement('button');
     participateBtn.type = 'button';
-    participateBtn.className = 'participate-btn' + (isParticipating ? ' participated' : '');
+    participateBtn.className = 'participate-btn' + (event.participants > 0 ? ' participated' : '');
     participateBtn.dataset.id = event.id;
-    participateBtn.setAttribute('aria-label', (isParticipating ? 'Leave ' : 'Join ') + event.title);
-    participateBtn.textContent = isParticipating ? 'Participating' : 'Participate';
+    participateBtn.setAttribute('aria-label', (event.participants > 0 ? 'Leave ' : 'Join ') + event.title);
+    participateBtn.textContent = event.participants > 0 ? 'Participating' : 'Participate';
     if (event.participants > 0) {
         participateBtn.textContent += ' (' + event.participants + ')';
     }
@@ -398,7 +372,7 @@ function createEventCard(event) {
     participateBtn.addEventListener('click', () => {
         if (toggleParticipation(event.id)) {
             filterEvents();
-            showToast(isParticipating ? 'Left event' : 'Joined event!', 'success');
+            showToast(event.participants > 0 ? 'Joined event!' : 'Left event', 'success');
         }
     });
 
@@ -413,7 +387,6 @@ function createEventCard(event) {
 
     actions.append(participateBtn, deleteBtn);
     card.append(header, venue, datetime, description, actions);
-
     return card;
 }
 
@@ -426,7 +399,6 @@ function filterEvents() {
             event.title.toLowerCase().includes(searchTerm) ||
             event.venue.toLowerCase().includes(searchTerm) ||
             event.description.toLowerCase().includes(searchTerm);
-
         const matchesCategory = category === 'all' || event.category === category;
         return matchesSearch && matchesCategory;
     });
@@ -513,9 +485,9 @@ async function handleFormSubmit(e) {
     
     setSubmitLoading(true);
     
-    const verification = await verifyAdminPassword(formData.password);
+    const result = await verifyAdminPassword(formData.password);
     
-    if (verification.networkError) {
+    if (result.networkError) {
         DOM.passwordError.textContent = 'Unable to verify password. Please check your internet connection and try again.';
         DOM.password.classList.add('error');
         DOM.password.setAttribute('aria-invalid', 'true');
@@ -524,11 +496,11 @@ async function handleFormSubmit(e) {
         return;
     }
     
-    if (!verification.valid) {
-        DOM.passwordError.textContent = 'Invalid admin password';
+    if (!result.valid) {
+        DOM.passwordError.textContent = 'Invalid admin password.';
         DOM.password.classList.add('error');
         DOM.password.setAttribute('aria-invalid', 'true');
-        showToast('Invalid admin password!', 'error');
+        showToast('Invalid admin password.', 'error');
         setSubmitLoading(false);
         return;
     }
