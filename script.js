@@ -113,11 +113,12 @@ function validateForm(data) {
 }
 
 // ========================================
-// API Calls - FIXED PATH
+// API Calls - ✅ FIXED PATH (Root folder)
 // ========================================
 
 async function verifyAdminPassword(password) {
     try {
+        // ✅ API call - verify-password.js root folder mein hai
         const response = await fetch('/api/verify-password', {
             method: 'POST',
             headers: {
