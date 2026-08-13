@@ -5,9 +5,8 @@
   "main": "index.html",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo Build complete",
-    "start": "vercel start",
-    "lint": "eslint script.js"
+    "build": "echo \"Build complete\"",
+    "start": "vercel start"
   },
   "keywords": [
     "bookstore",
@@ -18,9 +17,6 @@
   "author": "Sumit Joshi",
   "license": "MIT",
   "devDependencies": {
-    "vercel": "^34.0.0",
-    "eslint": "^8.57.0",
-    "@eslint/js": "^9.0.0",
-    "globals": "^15.0.0"
+    "vercel": "^34.0.0"
   }
 }
