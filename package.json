@@ -8,7 +8,23 @@
     "build": "echo 'Build complete'",
     "start": "vercel start"
   },
-  "keywords": [
+  "keywords": [{
+  "name": "bookstore-events",
+  "version": "1.0.0",
+  "description": "Independent Bookstore Events Management System",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "echo 'Build complete'",
+    "start": "vercel start"
+  },
+  "keywords": ["bookstore", "events", "vanilla-js", "vercel"],
+  "author": "Sumit Joshi",
+  "license": "MIT",
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  }
+}
     "bookstore",
     "events",
     "vanilla-js",
