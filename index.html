@@ -4,17 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Independent Bookstore Events</title>
-    <!-- No external libraries - pure vanilla CSS -->
     <link rel="stylesheet" href="style.css" />
 </head>
 <body>
     <div class="app-wrapper">
-        <!-- Header Section -->
+        <!-- Header -->
         <header class="app-header" role="banner">
             <div class="header-content">
                 <div class="logo-container">
                     <img src="bookstore-logo.svg" alt="Independent Bookstore Logo" class="logo" />
-                    <h1 class="app-title">📚 Independent Bookstore</h1>
+                    <h1 class="app-title">Independent Bookstore</h1>
                 </div>
                 <p class="app-subtitle">Discover, Participate &amp; Host Events</p>
             </div>
@@ -22,24 +21,22 @@
 
         <!-- Main Content -->
         <main class="app-main" role="main">
-            <!-- Search & Filter Section -->
+            <!-- Controls -->
             <section class="controls-section" aria-label="Search and filter events">
                 <div class="controls-wrapper">
-                    <!-- Search -->
                     <div class="search-wrapper">
-                        <span class="search-icon" aria-hidden="true">🔍</span>
+                        <span class="search-icon" aria-hidden="true">&#128269;</span>
                         <input
                             type="search"
                             id="searchInput"
                             class="search-input"
-                            placeholder="Search events by title, venue, or category..."
+                            placeholder="Search events..."
                             aria-label="Search events"
                             autocomplete="off"
                         />
-                        <button class="search-clear" id="clearSearch" aria-label="Clear search">✕</button>
+                        <button class="search-clear" id="clearSearch" aria-label="Clear search">&#10005;</button>
                     </div>
 
-                    <!-- Filter Dropdown -->
                     <div class="filter-wrapper">
                         <label for="categoryFilter" class="filter-label">Category</label>
                         <select id="categoryFilter" class="filter-select" aria-label="Filter events by category">
@@ -52,22 +49,19 @@
                         </select>
                     </div>
 
-                    <!-- Add Event Button -->
                     <button id="openAddEventModal" class="add-event-btn" aria-label="Add new event">
-                        <span aria-hidden="true">+</span> Add Event
+                        <span aria-hidden="true">&#43;</span> Add Event
                     </button>
                 </div>
             </section>
 
             <!-- Events Grid -->
             <section aria-label="Events list">
-                <div id="eventsContainer" class="events-grid" role="list">
-                    <!-- Events will be rendered here by JavaScript -->
-                </div>
+                <div id="eventsContainer" class="events-grid" role="list"></div>
 
                 <!-- Empty State -->
                 <div id="emptyState" class="empty-state" role="status" aria-live="polite" hidden>
-                    <p class="empty-icon" aria-hidden="true">📭</p>
+                    <p class="empty-icon" aria-hidden="true">&#128231;</p>
                     <h2 class="empty-title">No Events Found</h2>
                     <p class="empty-description">Try adjusting your search or filter criteria.</p>
                 </div>
@@ -83,7 +77,7 @@
         <!-- Footer -->
         <footer class="app-footer" role="contentinfo">
             <p>&copy; 2026 Independent Bookstore. All rights reserved.</p>
-            <p class="footer-telemetry">📊 Analytics: User interactions are being tracked</p>
+            <p class="footer-telemetry">&#128202; Analytics: User interactions are being tracked</p>
         </footer>
     </div>
 
@@ -92,7 +86,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle" class="modal-title">Add New Event</h2>
-                <button id="closeModal" class="modal-close" aria-label="Close modal">✕</button>
+                <button id="closeModal" class="modal-close" aria-label="Close modal">&#10005;</button>
             </div>
 
             <form id="addEventForm" novalidate>
@@ -141,7 +135,6 @@
                     <span class="char-count"><span id="charCount">0</span>/500</span>
                 </div>
 
-                <!-- Admin Password for event addition -->
                 <div class="form-group">
                     <label for="adminPassword">Admin Password <span aria-hidden="true" class="required-star">*</span></label>
                     <input type="password" id="adminPassword" class="form-input" required aria-required="true" placeholder="Enter admin password" />
