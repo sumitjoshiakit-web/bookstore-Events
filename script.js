@@ -50,8 +50,10 @@ const DOM = {
 // ========================================
 
 function sanitizeInput(input) {
-    if (typeof input !== 'string') return '';
-    return input.trim().replace(/[<>]/g, '');
+    if (typeof input !== 'string') {
+        return '';
+    }
+    return input.trim();
 }
 
 function generateId() {
@@ -160,11 +162,17 @@ async function verifyAdminPassword(password) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ password }),
-            signal: AbortSignal.timeout(10000)
+            body: JSON.stringify({ password })
         });
 
-        if (!response.ok && response.status !== 401) {
+        if (response.status === 401) {
+            return {
+                valid: false,
+                networkError: false
+            };
+        }
+
+        if (!response.ok) {
             throw new Error('Authentication service unavailable');
         }
 
@@ -375,14 +383,9 @@ function createEventCard(event) {
     participateBtn.className = 'participate-btn' + (isParticipating ? ' participated' : '');
     participateBtn.dataset.id = event.id;
     participateBtn.setAttribute('aria-label', (isParticipating ? 'Leave ' : 'Join ') + event.title);
-
-    const participateIcon = document.createElement('span');
-    participateIcon.setAttribute('aria-hidden', 'true');
-    participateIcon.textContent = isParticipating ? '✅' : '🎫';
-    participateBtn.append(participateIcon, document.createTextNode(isParticipating ? ' Participating' : ' Participate'));
-
+    participateBtn.textContent = isParticipating ? 'Participating' : 'Participate';
     if (event.participants > 0) {
-        participateBtn.append(document.createTextNode(' (' + event.participants + ')'));
+        participateBtn.textContent += ' (' + event.participants + ')';
     }
 
     const deleteBtn = document.createElement('button');
@@ -390,10 +393,7 @@ function createEventCard(event) {
     deleteBtn.className = 'delete-btn';
     deleteBtn.dataset.id = event.id;
     deleteBtn.setAttribute('aria-label', 'Delete event: ' + event.title);
-    const deleteIcon = document.createElement('span');
-    deleteIcon.setAttribute('aria-hidden', 'true');
-    deleteIcon.textContent = '🗑️';
-    deleteBtn.append(deleteIcon, document.createTextNode(' Delete'));
+    deleteBtn.textContent = 'Delete';
 
     participateBtn.addEventListener('click', () => {
         if (toggleParticipation(event.id)) {
@@ -561,9 +561,9 @@ function handleKeyboardNavigation(e) {
     }
 
     if (e.key === 'Tab') {
-        const focusableElements = DOM.modal.querySelectorAll('button, input, select, textarea');
-        const first = focusableElements[0];
-        const last = focusableElements[focusableElements.length - 1];
+        const focusable = DOM.modal.querySelectorAll('button, input, select, textarea');
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
 
         if (e.shiftKey && document.activeElement === first) {
             e.preventDefault();
@@ -572,6 +572,7 @@ function handleKeyboardNavigation(e) {
             e.preventDefault();
             first.focus();
         }
+        return;
     }
 
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
