@@ -6,6 +6,10 @@
       "dest": "/verify-password.js"
     },
     {
+      "src": "/(.*\\.(css|js|svg|png|jpg|jpeg|gif|webp|ico|woff|woff2|ttf))",
+      "dest": "/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
