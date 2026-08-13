@@ -1,14 +1,19 @@
 {
   "version": 2,
-  "functions": {
-    "verify-password.js": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "rewrites": [
+  "builds": [
     {
-      "source": "/api/verify-password",
-      "destination": "/verify-password.js"
+      "src": "verify-password.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "verify-password",
+      "dest": "verify-password.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "index.html"
     }
   ]
 }
