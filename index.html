@@ -92,32 +92,72 @@
             <form id="addEventForm" novalidate>
                 <div class="form-group">
                     <label for="eventTitle">Event Title <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="text" id="eventTitle" class="form-input" required aria-required="true" placeholder="e.g., Mystery Book Club Night" maxlength="100" />
+                    <input
+                        type="text"
+                        id="eventTitle"
+                        class="form-input"
+                        required
+                        aria-required="true"
+                        aria-describedby="titleError"
+                        autocomplete="off"
+                        placeholder="e.g., Mystery Book Club Night"
+                        maxlength="100"
+                    />
                     <span class="form-error" id="titleError" role="alert"></span>
                 </div>
 
                 <div class="form-group">
                     <label for="eventVenue">Venue <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="text" id="eventVenue" class="form-input" required aria-required="true" placeholder="e.g., Main Store - 123 Book St" maxlength="100" />
+                    <input
+                        type="text"
+                        id="eventVenue"
+                        class="form-input"
+                        required
+                        aria-required="true"
+                        aria-describedby="venueError"
+                        autocomplete="off"
+                        placeholder="e.g., Main Store - 123 Book St"
+                        maxlength="100"
+                    />
                     <span class="form-error" id="venueError" role="alert"></span>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group half">
                         <label for="eventDate">Date <span aria-hidden="true" class="required-star">*</span></label>
-                        <input type="date" id="eventDate" class="form-input" required aria-required="true" />
+                        <input
+                            type="date"
+                            id="eventDate"
+                            class="form-input"
+                            required
+                            aria-required="true"
+                            aria-describedby="dateError"
+                        />
                         <span class="form-error" id="dateError" role="alert"></span>
                     </div>
                     <div class="form-group half">
                         <label for="eventTime">Time <span aria-hidden="true" class="required-star">*</span></label>
-                        <input type="time" id="eventTime" class="form-input" required aria-required="true" />
+                        <input
+                            type="time"
+                            id="eventTime"
+                            class="form-input"
+                            required
+                            aria-required="true"
+                            aria-describedby="timeError"
+                        />
                         <span class="form-error" id="timeError" role="alert"></span>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label for="eventCategory">Category <span aria-hidden="true" class="required-star">*</span></label>
-                    <select id="eventCategory" class="form-input" required aria-required="true">
+                    <select
+                        id="eventCategory"
+                        class="form-input"
+                        required
+                        aria-required="true"
+                        aria-describedby="categoryError"
+                    >
                         <option value="">Select a category</option>
                         <option value="book-club">Book Club</option>
                         <option value="author-event">Author Event</option>
@@ -130,16 +170,34 @@
 
                 <div class="form-group">
                     <label for="eventDescription">Description <span aria-hidden="true" class="required-star">*</span></label>
-                    <textarea id="eventDescription" class="form-input" required aria-required="true" placeholder="Describe your event..." maxlength="500" rows="4"></textarea>
+                    <textarea
+                        id="eventDescription"
+                        class="form-input"
+                        required
+                        aria-required="true"
+                        aria-describedby="descriptionError charCount"
+                        maxlength="500"
+                        rows="4"
+                        placeholder="Describe your event..."
+                    ></textarea>
                     <span class="form-error" id="descriptionError" role="alert"></span>
                     <span class="char-count"><span id="charCount">0</span>/500</span>
                 </div>
 
                 <div class="form-group">
                     <label for="adminPassword">Admin Password <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="password" id="adminPassword" class="form-input" required aria-required="true" placeholder="Enter admin password" />
+                    <input
+                        type="password"
+                        id="adminPassword"
+                        class="form-input"
+                        required
+                        aria-required="true"
+                        aria-describedby="passwordError"
+                        autocomplete="current-password"
+                        placeholder="Enter admin password"
+                    />
                     <span class="form-error" id="passwordError" role="alert"></span>
-                    <small class="form-hint">Default: admin123 (configurable via environment variables)</small>
+                    <small class="form-hint">Admin authentication is required to add events.</small>
                 </div>
 
                 <div class="form-actions">
