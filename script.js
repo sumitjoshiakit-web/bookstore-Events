@@ -56,10 +56,6 @@ function sanitizeInput(input) {
     return input.trim().replace(/\0/g, '');
 }
 
-function generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2, 7);
-}
-
 function logAnalytics(action, details = {}) {
     const logMessage = '[Analytics] User interacted with Independent Bookstore Events Page';
     console.log(logMessage, { 
@@ -177,108 +173,104 @@ async function verifyAdminPassword(password) {
 }
 
 // ========================================
-// Data Persistence
+// Database API Persistence
 // ========================================
 
-function loadEventsFromStorage() {
-    try {
-        const stored = localStorage.getItem('bookstoreEvents');
-        if (!stored) return [];
+async function loadEventsFromAPI() {
+    const response = await fetch('/api/events', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+        signal: AbortSignal.timeout(10000)
+    });
 
-        const parsed = JSON.parse(stored);
-        if (!Array.isArray(parsed)) return [];
+    const data = await response.json();
 
-        return parsed
-            .filter(event =>
-                event &&
-                typeof event === 'object' &&
-                typeof event.id === 'string' &&
-                typeof event.title === 'string' &&
-                typeof event.venue === 'string' &&
-                typeof event.date === 'string' &&
-                typeof event.time === 'string' &&
-                typeof event.category === 'string' &&
-                typeof event.description === 'string'
-            )
-            .map(event => ({
-                id: sanitizeInput(event.id),
-                title: sanitizeInput(event.title),
-                venue: sanitizeInput(event.venue),
-                date: sanitizeInput(event.date),
-                time: sanitizeInput(event.time),
-                category: sanitizeInput(event.category),
-                description: sanitizeInput(event.description),
-                participants: Number(event.participants) > 0 ? 1 : 0,
-                createdAt: typeof event.createdAt === 'string' ? event.createdAt : new Date().toISOString()
-            }));
-
-    } catch (error) {
-        console.warn('Failed to load events from localStorage:', error);
-        return [];
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to load events');
     }
+
+    return Array.isArray(data.events) ? data.events : [];
 }
 
-function saveEventsToStorage(eventsData) {
-    try {
-        localStorage.setItem('bookstoreEvents', JSON.stringify(eventsData));
-    } catch (error) {
-        console.warn('Failed to save events to localStorage:', error);
-    }
-}
-
-// ========================================
-// Event Management
-// ========================================
-
-function addEvent(eventData) {
+async function addEvent(eventData) {
     const sanitizedData = {
-        id: generateId(),
-        title: sanitizeInput(eventData.title.trim()),
-        venue: sanitizeInput(eventData.venue.trim()),
+        title: sanitizeInput(eventData.title),
+        venue: sanitizeInput(eventData.venue),
         date: sanitizeInput(eventData.date),
         time: sanitizeInput(eventData.time),
         category: sanitizeInput(eventData.category),
-        description: sanitizeInput(eventData.description.trim()),
-        participants: 0,
-        createdAt: new Date().toISOString(),
+        description: sanitizeInput(eventData.description),
+        password: eventData.password
     };
-    
-    events.push(sanitizedData);
-    saveEventsToStorage(events);
-    
+
+    const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sanitizedData),
+        signal: AbortSignal.timeout(10000)
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to add event');
+    }
+
     logAnalytics('ADD_EVENT', { 
-        eventId: sanitizedData.id, 
+        eventId: data.event?.id, 
         category: sanitizedData.category 
     });
-    
-    return sanitizedData;
+
+    return data.event;
 }
 
-function deleteEvent(eventId) {
-    const index = events.findIndex(e => e.id === eventId);
-    if (index === -1) return false;
-    
-    const deleted = events[index];
-    events.splice(index, 1);
-    saveEventsToStorage(events);
-    
-    logAnalytics('DELETE_EVENT', { eventId, category: deleted.category });
-    return true;
-}
-
-function toggleParticipation(eventId) {
-    const event = events.find(e => e.id === eventId);
-    if (!event) return false;
-    
-    event.participants = event.participants === 0 ? 1 : 0;
-    saveEventsToStorage(events);
-    
-    logAnalytics('PARTICIPATE_TOGGLE', { 
-        eventId, 
-        status: event.participants === 1 ? 'joined' : 'left' 
+async function deleteEvent(eventId, password) {
+    const response = await fetch('/api/events?id=' + encodeURIComponent(eventId), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+        signal: AbortSignal.timeout(10000)
     });
-    
-    return true;
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete event');
+    }
+
+    logAnalytics('DELETE_EVENT', { eventId });
+    return data;
+}
+
+async function participateInEvent(eventId) {
+    const response = await fetch('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            action: 'participate',
+            eventId
+        }),
+        signal: AbortSignal.timeout(10000)
+    });
+
+    const data = await response.json();
+
+    if (response.status === 409) {
+        return {
+            alreadyParticipated: true,
+            message: data.message || 'Your participation has already been recorded.'
+        };
+    }
+
+    if (!response.ok) {
+        throw new Error(data.error || 'Unable to record your participation');
+    }
+
+    logAnalytics('PARTICIPATE', { eventId, status: 'joined' });
+    return {
+        alreadyParticipated: false,
+        event: data.event
+    };
 }
 
 // ========================================
@@ -354,13 +346,10 @@ function createEventCard(event) {
 
     const participateBtn = document.createElement('button');
     participateBtn.type = 'button';
-    participateBtn.className = 'participate-btn' + (event.participants > 0 ? ' participated' : '');
+    participateBtn.className = 'participate-btn';
     participateBtn.dataset.id = event.id;
-    participateBtn.setAttribute('aria-label', (event.participants > 0 ? 'Leave ' : 'Join ') + event.title);
-    participateBtn.textContent = event.participants > 0 ? 'Participating' : 'Participate';
-    if (event.participants > 0) {
-        participateBtn.textContent += ' (' + event.participants + ')';
-    }
+    participateBtn.setAttribute('aria-label', 'Participate in ' + event.title);
+    participateBtn.textContent = 'Participate';
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
@@ -369,19 +358,47 @@ function createEventCard(event) {
     deleteBtn.setAttribute('aria-label', 'Delete event: ' + event.title);
     deleteBtn.textContent = 'Delete';
 
-    participateBtn.addEventListener('click', () => {
-        if (toggleParticipation(event.id)) {
+    participateBtn.addEventListener('click', async () => {
+        try {
+            participateBtn.disabled = true;
+            const result = await participateInEvent(event.id);
+
+            if (result.alreadyParticipated) {
+                showToast(
+                    result.message || 'Your participation has already been recorded.',
+                    'info'
+                );
+                return;
+            }
+
+            events = await loadEventsFromAPI();
             filterEvents();
-            showToast(event.participants > 0 ? 'Joined event!' : 'Left event', 'success');
+            showToast('Your participation has been recorded successfully!', 'success');
+        } catch (error) {
+            console.error('Participation error:', error);
+            showToast('Unable to record your participation. Please try again.', 'error');
+        } finally {
+            participateBtn.disabled = false;
         }
     });
 
-    deleteBtn.addEventListener('click', () => {
-        if (confirm('Delete "' + event.title + '"?')) {
-            if (deleteEvent(event.id)) {
-                filterEvents();
-                showToast('Event deleted successfully', 'success');
-            }
+    deleteBtn.addEventListener('click', async () => {
+        if (!confirm('Delete "' + event.title + '"?')) return;
+
+        const password = prompt('Enter admin password:');
+        if (!password) return;
+
+        try {
+            deleteBtn.disabled = true;
+            await deleteEvent(event.id, password);
+            events = await loadEventsFromAPI();
+            filterEvents();
+            showToast('Event deleted successfully', 'success');
+        } catch (error) {
+            console.error('Delete error:', error);
+            showToast(error.message || 'Unable to delete event. Please try again.', 'error');
+        } finally {
+            deleteBtn.disabled = false;
         }
     });
 
@@ -506,13 +523,14 @@ async function handleFormSubmit(e) {
     }
     
     try {
-        const newEvent = addEvent(formData);
+        const newEvent = await addEvent(formData);
         closeModal();
+        events = await loadEventsFromAPI();
         filterEvents();
         showToast('Event "' + newEvent.title + '" added successfully!', 'success');
         logAnalytics('EVENT_ADDED_SUCCESS', { eventId: newEvent.id });
     } catch (error) {
-        showToast('Failed to add event. Please try again.', 'error');
+        showToast(error.message || 'Failed to add event. Please try again.', 'error');
         console.error('Error adding event:', error);
     } finally {
         setSubmitLoading(false);
@@ -559,22 +577,31 @@ function handleKeyboardNavigation(e) {
 // Initialization
 // ========================================
 
-function init() {
-    events = loadEventsFromStorage();
-    filteredEvents = events.slice();
-    
+async function init() {
     const today = new Date().toISOString().split('T')[0];
     DOM.date.min = today;
     DOM.date.value = today;
-    
-    renderEvents();
+
     setupEventListeners();
-    
-    logAnalytics('PAGE_LOAD', { eventCount: events.length });
-    
-    console.log('\uD83D\uDCDA Bookstore Events App initialized');
-    console.log('\uD83D\uDCCA ' + events.length + ' events loaded from storage');
-    console.log('\uD83D\uDD10 Using environment-based admin authentication');
+
+    try {
+        events = await loadEventsFromAPI();
+        filteredEvents = events.slice();
+        renderEvents();
+
+        logAnalytics('PAGE_LOAD', { eventCount: events.length });
+
+        console.log('\uD83D\uDCDA Bookstore Events App initialized');
+        console.log('\uD83D\uDCCA ' + events.length + ' events loaded from database');
+        console.log('\uD83D\uDD10 Using environment-based admin authentication');
+    } catch (error) {
+        console.error('Failed to load events:', error);
+        events = [];
+        filteredEvents = [];
+        DOM.loadingSpinner.hidden = true;
+        DOM.emptyState.hidden = false;
+        showToast('Unable to load events. Please try again.', 'error');
+    }
 }
 
 function setupEventListeners() {
