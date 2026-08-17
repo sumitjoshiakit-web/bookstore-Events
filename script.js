@@ -1,23 +1,22 @@
 /**
- * Bookstore Events - Main Application
- * Pure vanilla JavaScript implementation
+ * Independent Bookstore Events - Main Application
+ * Pure vanilla JavaScript. Database is the only source of truth.
  */
 
-// ========================================
-// State Management
-// ========================================
-
 let events = [];
-let filteredEvents = [];
+let statusFilter = 'all';
 let lastFocusedElement = null;
 
 const DOM = {
     eventsContainer: document.getElementById('eventsContainer'),
     emptyState: document.getElementById('emptyState'),
+    emptyTitle: document.getElementById('emptyTitle'),
+    emptyDescription: document.getElementById('emptyDescription'),
     loadingSpinner: document.getElementById('loadingSpinner'),
     searchInput: document.getElementById('searchInput'),
     clearSearch: document.getElementById('clearSearch'),
     categoryFilter: document.getElementById('categoryFilter'),
+    statusButtons: [...document.querySelectorAll('.status-filter')],
     openModalBtn: document.getElementById('openAddEventModal'),
     closeModalBtn: document.getElementById('closeModal'),
     cancelModalBtn: document.getElementById('cancelModal'),
@@ -26,7 +25,6 @@ const DOM = {
     toast: document.getElementById('toast'),
     toastMessage: document.getElementById('toastMessage'),
     submitButton: document.getElementById('submitEvent'),
-    
     title: document.getElementById('eventTitle'),
     venue: document.getElementById('eventVenue'),
     date: document.getElementById('eventDate'),
@@ -35,418 +33,360 @@ const DOM = {
     description: document.getElementById('eventDescription'),
     password: document.getElementById('adminPassword'),
     charCount: document.getElementById('charCount'),
-    
     titleError: document.getElementById('titleError'),
     venueError: document.getElementById('venueError'),
     dateError: document.getElementById('dateError'),
     timeError: document.getElementById('timeError'),
     categoryError: document.getElementById('categoryError'),
     descriptionError: document.getElementById('descriptionError'),
-    passwordError: document.getElementById('passwordError'),
+    passwordError: document.getElementById('passwordError')
 };
 
-// ========================================
-// Utility Functions
-// ========================================
-
-function sanitizeInput(input) {
-    if (typeof input !== 'string') {
-        return '';
-    }
-    return input.trim().replace(/\0/g, '');
+function sanitizeInput(value) {
+    return typeof value === 'string' ? value.trim().replace(/\0/g, '') : '';
 }
 
 function logAnalytics(action, details = {}) {
-    const logMessage = '[Analytics] User interacted with Independent Bookstore Events Page';
-    console.log(logMessage, { 
-        action, 
-        timestamp: new Date().toISOString(), 
-        ...details 
+    console.log('[Analytics] User interacted with Independent Bookstore Events Page', {
+        action,
+        timestamp: new Date().toISOString(),
+        ...details
     });
-    
-    const telemetryElement = document.querySelector('.footer-telemetry');
-    if (telemetryElement) {
-        telemetryElement.textContent = '\uD83D\uDCCA Last interaction: ' + action + ' at ' + new Date().toLocaleTimeString();
-    }
 }
 
 function showToast(message, type = 'info') {
-    const toast = DOM.toast;
-    const messageEl = DOM.toastMessage;
-    
-    messageEl.textContent = message;
-    toast.className = 'toast ' + type;
-    toast.hidden = false;
-    
-    clearTimeout(toast._timeout);
-    toast._timeout = setTimeout(() => {
-        toast.hidden = true;
-    }, 3000);
+    DOM.toastMessage.textContent = message;
+    DOM.toast.className = 'toast ' + type;
+    DOM.toast.hidden = false;
+    clearTimeout(DOM.toast._timeout);
+    DOM.toast._timeout = setTimeout(() => { DOM.toast.hidden = true; }, 3500);
 }
 
-function setSubmitLoading(isLoading) {
-    DOM.submitButton.disabled = isLoading;
-    if (isLoading) {
-        DOM.submitButton.setAttribute('aria-busy', 'true');
-        DOM.submitButton.textContent = 'Verifying...';
+function setLoading(button, loading, loadingText) {
+    button.disabled = loading;
+    button.setAttribute('aria-busy', String(loading));
+    if (loading) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = loadingText;
     } else {
-        DOM.submitButton.removeAttribute('aria-busy');
-        DOM.submitButton.textContent = 'Add Event';
+        button.textContent = button.dataset.originalText || button.textContent;
+        delete button.dataset.originalText;
     }
 }
 
-function validateForm(data) {
-    const errors = {};
+function getEventStatus(event, now = new Date()) {
+    const date = sanitizeInput(event.date);
+    const time = sanitizeInput(event.time);
+    const start = new Date(`${date}T${time || '00:00'}`);
+    if (Number.isNaN(start.getTime())) return 'past';
 
-    const title = data.title.trim();
-    const venue = data.venue.trim();
-    const description = data.description.trim();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
 
-    if (title.length < 2 || title.length > 100) {
-        errors.title = 'Title must be between 2 and 100 characters.';
-    }
+    if (eventDay > today) return 'upcoming';
+    if (eventDay < today) return 'past';
 
-    if (venue.length < 2 || venue.length > 100) {
-        errors.venue = 'Venue must be between 2 and 100 characters.';
-    }
-
-    if (!data.date) {
-        errors.date = 'Please select a date.';
-    } else {
-        const selectedDate = new Date(data.date + 'T00:00:00');
-        if (Number.isNaN(selectedDate.getTime())) {
-            errors.date = 'Please enter a valid date.';
-        }
-    }
-
-    if (!data.time) {
-        errors.time = 'Please select a time.';
-    } else if (!/^\d{2}:\d{2}$/.test(data.time)) {
-        errors.time = 'Please enter a valid time.';
-    }
-
-    const validCategories = ['book-club', 'author-event', 'workshop', 'reading', 'signing'];
-    if (!validCategories.includes(data.category)) {
-        errors.category = 'Please select a valid category.';
-    }
-
-    if (description.length < 5 || description.length > 500) {
-        errors.description = 'Description must be between 5 and 500 characters.';
-    }
-
-    if (typeof data.password !== 'string' || data.password.trim() === '') {
-        errors.password = 'Admin password is required.';
-    }
-
-    return errors;
+    // The current data model has no end-time column. For today's events,
+    // treat the event as current from its start time through the day.
+    // A future end-time can be added later without changing this UI model.
+    return start <= now ? 'current' : 'upcoming';
 }
 
-// ========================================
-// API Calls
-// ========================================
-
-async function verifyAdminPassword(password) {
-    try {
-        const response = await fetch('/api/verify-password', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password }),
-            signal: AbortSignal.timeout(10000)
-        });
-
-        if (response.status === 401) {
-            return { valid: false, networkError: false };
-        }
-
-        if (!response.ok) {
-            throw new Error('Authentication service unavailable');
-        }
-
-        const data = await response.json();
-        return { valid: data.valid === true, networkError: false };
-
-    } catch (error) {
-        console.error('Password verification error:', error);
-        logAnalytics('PASSWORD_VERIFY_ERROR', { error: error.message });
-        return { valid: false, networkError: true };
-    }
+function statusLabel(status) {
+    return status === 'current' ? 'Current' : status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-// ========================================
-// Database API Persistence
-// ========================================
+function formatEventDate(date, time) {
+    const value = new Date(`${date}T${time || '00:00'}`);
+    if (Number.isNaN(value.getTime())) return `${date} at ${time}`;
+    return new Intl.DateTimeFormat(undefined, {
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    }).format(value);
+}
 
-async function loadEventsFromAPI() {
-    const response = await fetch('/api/events', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-        signal: AbortSignal.timeout(10000)
+async function fetchJson(url, options = {}) {
+    const response = await fetch(url, {
+        ...options,
+        signal: options.signal || AbortSignal.timeout(10000)
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Failed to load events');
-    }
-
-    return Array.isArray(data.events) ? data.events : [];
-}
-
-async function addEvent(eventData) {
-    const sanitizedData = {
-        title: sanitizeInput(eventData.title),
-        venue: sanitizeInput(eventData.venue),
-        date: sanitizeInput(eventData.date),
-        time: sanitizeInput(eventData.time),
-        category: sanitizeInput(eventData.category),
-        description: sanitizeInput(eventData.description),
-        password: eventData.password
-    };
-
-    const response = await fetch('/api/events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sanitizedData),
-        signal: AbortSignal.timeout(10000)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Failed to add event');
-    }
-
-    logAnalytics('ADD_EVENT', { 
-        eventId: data.event?.id, 
-        category: sanitizedData.category 
-    });
-
-    return data.event;
-}
-
-async function deleteEvent(eventId, password) {
-    const response = await fetch('/api/events?id=' + encodeURIComponent(eventId), {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-        signal: AbortSignal.timeout(10000)
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete event');
-    }
-
-    logAnalytics('DELETE_EVENT', { eventId });
+    let data = {};
+    try { data = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(data.error || 'Request failed');
     return data;
 }
 
+async function loadEventsFromAPI() {
+    const data = await fetchJson('/api/events', { headers: { Accept: 'application/json' } });
+    return Array.isArray(data.events) ? data.events : [];
+}
+
 async function participateInEvent(eventId) {
-    const response = await fetch('/api/events', {
+    const data = await fetchJson('/api/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'participate', eventId })
+    }).catch(async error => {
+        if (error.message === 'Your participation has already been recorded.') {
+            return { alreadyParticipated: true, message: error.message };
+        }
+        throw error;
+    });
+    return data;
+}
+
+async function verifyAdminPassword(password) {
+    try {
+        const data = await fetchJson('/api/verify-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        });
+        return { valid: data.valid === true, networkError: false };
+    } catch (error) {
+        return { valid: false, networkError: error.message !== 'Invalid admin password.' };
+    }
+}
+
+async function addEvent(data) {
+    return fetchJson('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            action: 'participate',
-            eventId
-        }),
-        signal: AbortSignal.timeout(10000)
+            title: sanitizeInput(data.title),
+            venue: sanitizeInput(data.venue),
+            date: sanitizeInput(data.date),
+            time: sanitizeInput(data.time),
+            category: sanitizeInput(data.category),
+            description: sanitizeInput(data.description),
+            password: data.password
+        })
     });
-
-    const data = await response.json();
-
-    if (response.status === 409) {
-        return {
-            alreadyParticipated: true,
-            message: data.message || 'Your participation has already been recorded.'
-        };
-    }
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Unable to record your participation');
-    }
-
-    logAnalytics('PARTICIPATE', { eventId, status: 'joined' });
-    return {
-        alreadyParticipated: false,
-        event: data.event
-    };
 }
 
-// ========================================
-// Rendering
-// ========================================
-
-function renderEvents() {
-    DOM.loadingSpinner.hidden = false;
-    DOM.eventsContainer.replaceChildren();
-
-    const eventsToRender = filteredEvents;
-
-    if (eventsToRender.length === 0) {
-        DOM.loadingSpinner.hidden = true;
-        DOM.emptyState.hidden = false;
-        return;
-    }
-
-    DOM.emptyState.hidden = true;
-    const fragment = document.createDocumentFragment();
-    eventsToRender.forEach(event => {
-        fragment.appendChild(createEventCard(event));
+async function deleteEvent(eventId, password) {
+    return fetchJson('/api/events?id=' + encodeURIComponent(eventId), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password })
     });
-    DOM.eventsContainer.appendChild(fragment);
+}
 
-    DOM.loadingSpinner.hidden = true;
-    logAnalytics('RENDER_EVENTS', { count: eventsToRender.length });
+function matchesFilters(event) {
+    const search = DOM.searchInput.value.trim().toLowerCase();
+    const category = DOM.categoryFilter.value;
+    const status = getEventStatus(event);
+    const text = `${event.title} ${event.venue} ${event.description}`.toLowerCase();
+    return (!search || text.includes(search)) &&
+        (category === 'all' || event.category === category) &&
+        (statusFilter === 'all' || status === statusFilter);
+}
+
+function filteredEvents() {
+    return events.filter(matchesFilters).sort((a, b) => {
+        const aDate = new Date(`${a.date}T${a.time || '00:00'}`);
+        const bDate = new Date(`${b.date}T${b.time || '00:00'}`);
+        return aDate - bDate;
+    });
 }
 
 function createEventCard(event) {
+    const status = getEventStatus(event);
     const card = document.createElement('article');
-    card.className = 'event-card';
+    card.className = `event-card status-${status}`;
     card.setAttribute('role', 'listitem');
 
-    // Header
     const header = document.createElement('div');
     header.className = 'event-card-header';
-
     const title = document.createElement('h3');
     title.className = 'event-title';
     title.textContent = event.title;
+    const statusBadge = document.createElement('span');
+    statusBadge.className = 'event-status-badge';
+    statusBadge.textContent = statusLabel(status);
+    header.append(title, statusBadge);
 
     const category = document.createElement('span');
     category.className = 'event-category-badge';
     category.textContent = event.category;
 
-    header.append(title, category);
-
-    // Venue
     const venue = document.createElement('div');
     venue.className = 'event-venue';
-    const venueIcon = document.createElement('span');
-    venueIcon.setAttribute('aria-hidden', 'true');
-    venueIcon.textContent = '📍';
-    venue.append(venueIcon, document.createTextNode(' ' + event.venue));
+    venue.textContent = `📍 ${event.venue}`;
 
-    // Date/Time
     const datetime = document.createElement('div');
     datetime.className = 'event-datetime';
-    const dateIcon = document.createElement('span');
-    dateIcon.setAttribute('aria-hidden', 'true');
-    dateIcon.textContent = '📅';
-    datetime.append(dateIcon, document.createTextNode(' ' + event.date + ' at ' + event.time));
+    datetime.textContent = `📅 ${formatEventDate(event.date, event.time)}`;
 
-    // Description
     const description = document.createElement('p');
     description.className = 'event-description';
     description.textContent = event.description;
 
-    // Actions
+    const count = document.createElement('p');
+    count.className = 'event-participants';
+    count.textContent = `${Number(event.participants) || 0} participant${Number(event.participants) === 1 ? '' : 's'}`;
+
     const actions = document.createElement('div');
     actions.className = 'event-card-actions';
 
-    const participateBtn = document.createElement('button');
-    participateBtn.type = 'button';
-    participateBtn.className = 'participate-btn';
-    participateBtn.dataset.id = event.id;
-    participateBtn.setAttribute('aria-label', 'Participate in ' + event.title);
-    participateBtn.textContent = 'Participate';
+    const participate = document.createElement('button');
+    participate.type = 'button';
+    participate.className = 'participate-btn';
+    participate.textContent = status === 'past' ? 'Event Completed' : 'Participate';
+    participate.setAttribute('aria-label', status === 'past' ? `${event.title} is completed` : `Participate in ${event.title}`);
+    participate.disabled = status === 'past';
 
     const deleteBtn = document.createElement('button');
     deleteBtn.type = 'button';
     deleteBtn.className = 'delete-btn';
-    deleteBtn.dataset.id = event.id;
-    deleteBtn.setAttribute('aria-label', 'Delete event: ' + event.title);
     deleteBtn.textContent = 'Delete';
+    deleteBtn.setAttribute('aria-label', `Delete event: ${event.title}`);
 
-    participateBtn.addEventListener('click', async () => {
+    participate.addEventListener('click', async () => {
+        if (participate.disabled) return;
+        setLoading(participate, true, 'Saving...');
         try {
-            participateBtn.disabled = true;
             const result = await participateInEvent(event.id);
-
-            if (result.alreadyParticipated) {
-                showToast(
-                    result.message || 'Your participation has already been recorded.',
-                    'info'
-                );
+            if (result.alreadyParticipated || result.message === 'Your participation has already been recorded.') {
+                showToast('Your participation has already been recorded.', 'info');
                 return;
             }
-
             events = await loadEventsFromAPI();
-            filterEvents();
+            renderEvents();
             showToast('Your participation has been recorded successfully!', 'success');
+            logAnalytics('PARTICIPATE', { eventId: event.id });
         } catch (error) {
             console.error('Participation error:', error);
-            showToast('Unable to record your participation. Please try again.', 'error');
+            showToast('Unable to record your participation. Please check your connection and try again.', 'error');
         } finally {
-            participateBtn.disabled = false;
+            setLoading(participate, false);
         }
     });
 
     deleteBtn.addEventListener('click', async () => {
-        if (!confirm('Delete "' + event.title + '"?')) return;
-
+        if (!confirm(`Delete "${event.title}"? This cannot be undone.`)) return;
         const password = prompt('Enter admin password:');
         if (!password) return;
-
+        setLoading(deleteBtn, true, 'Deleting...');
         try {
-            deleteBtn.disabled = true;
             await deleteEvent(event.id, password);
             events = await loadEventsFromAPI();
-            filterEvents();
-            showToast('Event deleted successfully', 'success');
+            renderEvents();
+            showToast('Event deleted successfully.', 'success');
+            logAnalytics('DELETE_EVENT', { eventId: event.id });
         } catch (error) {
             console.error('Delete error:', error);
             showToast(error.message || 'Unable to delete event. Please try again.', 'error');
         } finally {
-            deleteBtn.disabled = false;
+            setLoading(deleteBtn, false);
         }
     });
 
-    actions.append(participateBtn, deleteBtn);
-    card.append(header, venue, datetime, description, actions);
+    actions.append(participate, deleteBtn);
+    header.append(category);
+    card.append(header, venue, datetime, description, count, actions);
     return card;
 }
 
-function filterEvents() {
-    const searchTerm = DOM.searchInput.value.trim().toLowerCase();
-    const category = DOM.categoryFilter.value;
+function renderSection(title, status, sectionEvents) {
+    const section = document.createElement('section');
+    section.className = 'event-status-section';
+    section.setAttribute('aria-labelledby', `section-${status}`);
 
-    filteredEvents = events.filter(event => {
-        const matchesSearch = searchTerm === '' ||
-            event.title.toLowerCase().includes(searchTerm) ||
-            event.venue.toLowerCase().includes(searchTerm) ||
-            event.description.toLowerCase().includes(searchTerm);
-        const matchesCategory = category === 'all' || event.category === category;
-        return matchesSearch && matchesCategory;
+    const heading = document.createElement('div');
+    heading.className = 'event-section-heading';
+    const h2 = document.createElement('h2');
+    h2.id = `section-${status}`;
+    h2.textContent = title;
+    const count = document.createElement('span');
+    count.className = 'event-section-count';
+    count.textContent = String(sectionEvents.length);
+    heading.append(h2, count);
+
+    const grid = document.createElement('div');
+    grid.className = 'events-grid';
+    grid.setAttribute('role', 'list');
+    sectionEvents.forEach(event => grid.appendChild(createEventCard(event)));
+
+    section.append(heading, grid);
+    return section;
+}
+
+function renderEvents() {
+    DOM.loadingSpinner.hidden = false;
+    DOM.emptyState.hidden = true;
+    DOM.eventsContainer.replaceChildren();
+
+    const list = filteredEvents();
+    if (!list.length) {
+        DOM.loadingSpinner.hidden = true;
+        DOM.emptyState.hidden = false;
+        const hasSearch = DOM.searchInput.value.trim() || DOM.categoryFilter.value !== 'all';
+        DOM.emptyTitle.textContent = hasSearch ? 'No events found' : 'No events in this view';
+        DOM.emptyDescription.textContent = hasSearch
+            ? 'Try a different search term, category, or status.'
+            : 'There are currently no events to display here.';
+        return;
+    }
+
+    const groups = [
+        ['Current Events', 'current'],
+        ['Upcoming Events', 'upcoming'],
+        ['Past Events', 'past']
+    ];
+
+    const fragment = document.createDocumentFragment();
+    groups.forEach(([title, status]) => {
+        const group = list.filter(event => getEventStatus(event) === status);
+        if (group.length) fragment.appendChild(renderSection(title, status, group));
     });
+    DOM.eventsContainer.appendChild(fragment);
+    DOM.loadingSpinner.hidden = true;
+    logAnalytics('RENDER_EVENTS', { count: list.length, filter: statusFilter });
+}
 
-    DOM.clearSearch.classList.toggle('visible', searchTerm.length > 0);
+function setStatusFilter(status) {
+    statusFilter = status;
+    DOM.statusButtons.forEach(button => {
+        const active = button.dataset.status === status;
+        button.classList.toggle('active', active);
+        button.setAttribute('aria-pressed', String(active));
+    });
     renderEvents();
 }
 
-// ========================================
-// Modal Management
-// ========================================
+function validateForm(data) {
+    const errors = {};
+    if (data.title.trim().length < 2 || data.title.trim().length > 100) errors.title = 'Title must be between 2 and 100 characters.';
+    if (data.venue.trim().length < 2 || data.venue.trim().length > 100) errors.venue = 'Venue must be between 2 and 100 characters.';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) errors.date = 'Please select a valid date.';
+    if (!/^\d{2}:\d{2}$/.test(data.time)) errors.time = 'Please select a valid time.';
+    if (!['book-club', 'author-event', 'workshop', 'reading', 'signing'].includes(data.category)) errors.category = 'Please select a valid category.';
+    if (data.description.trim().length < 5 || data.description.trim().length > 500) errors.description = 'Description must be between 5 and 500 characters.';
+    if (!data.password.trim()) errors.password = 'Admin password is required.';
+    return errors;
+}
 
-function openModal() {
-    lastFocusedElement = document.activeElement;
-    DOM.modal.classList.add('open');
-    DOM.form.reset();
-    DOM.modal.setAttribute('aria-hidden', 'false');
-    document.body.style.overflow = 'hidden';
-
-    document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
+function clearFormErrors() {
+    document.querySelectorAll('.form-error').forEach(el => { el.textContent = ''; });
     document.querySelectorAll('.form-input').forEach(el => {
         el.classList.remove('error');
         el.removeAttribute('aria-invalid');
     });
+}
 
-    const today = new Date().toISOString().split('T')[0];
+function openModal() {
+    lastFocusedElement = document.activeElement;
+    DOM.form.reset();
+    clearFormErrors();
+    DOM.modal.classList.add('open');
+    DOM.modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    DOM.charCount.textContent = '0';
+    const today = new Date().toISOString().slice(0, 10);
     DOM.date.value = today;
     DOM.date.min = today;
-    DOM.charCount.textContent = '0';
-
-    setTimeout(() => DOM.title.focus(), 100);
+    setTimeout(() => DOM.title.focus(), 50);
     logAnalytics('OPEN_MODAL');
 }
 
@@ -454,179 +394,115 @@ function closeModal() {
     DOM.modal.classList.remove('open');
     DOM.modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
-
-    if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
-        lastFocusedElement.focus();
-    }
+    if (lastFocusedElement?.focus) lastFocusedElement.focus();
 }
 
-async function handleFormSubmit(e) {
-    e.preventDefault();
-    
-    const formData = {
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    const data = {
         title: DOM.title.value,
         venue: DOM.venue.value,
         date: DOM.date.value,
         time: DOM.time.value,
         category: DOM.category.value,
         description: DOM.description.value,
-        password: DOM.password.value,
+        password: DOM.password.value
     };
-    
-    const errors = validateForm(formData);
-    
-    document.querySelectorAll('.form-error').forEach(el => el.textContent = '');
-    document.querySelectorAll('.form-input').forEach(el => {
-        el.classList.remove('error');
-        el.removeAttribute('aria-invalid');
+    clearFormErrors();
+    const errors = validateForm(data);
+    Object.entries(errors).forEach(([field, message]) => {
+        const input = DOM[field];
+        const error = DOM[field + 'Error'];
+        if (input) {
+            input.classList.add('error');
+            input.setAttribute('aria-invalid', 'true');
+        }
+        if (error) error.textContent = message;
     });
-    
-    let hasErrors = false;
-    for (const field in errors) {
-        if (Object.prototype.hasOwnProperty.call(errors, field)) {
-            const errorEl = DOM[field + 'Error'];
-            const inputEl = DOM[field];
-            if (errorEl) errorEl.textContent = errors[field];
-            if (inputEl) {
-                inputEl.classList.add('error');
-                inputEl.setAttribute('aria-invalid', 'true');
-            }
-            hasErrors = true;
-        }
-    }
-    
-    if (hasErrors) {
-        showToast('Please fix the errors in the form', 'error');
+    if (Object.keys(errors).length) {
+        showToast('Please fix the highlighted fields.', 'error');
         return;
     }
-    
-    setSubmitLoading(true);
-    
-    const result = await verifyAdminPassword(formData.password);
-    
-    if (result.networkError) {
-        DOM.passwordError.textContent = 'Unable to verify password. Please check your internet connection and try again.';
-        DOM.password.classList.add('error');
-        DOM.password.setAttribute('aria-invalid', 'true');
-        showToast('Connection problem. Please try again.', 'error');
-        setSubmitLoading(false);
-        return;
-    }
-    
-    if (!result.valid) {
-        DOM.passwordError.textContent = 'Invalid admin password.';
-        DOM.password.classList.add('error');
-        DOM.password.setAttribute('aria-invalid', 'true');
-        showToast('Invalid admin password.', 'error');
-        setSubmitLoading(false);
-        return;
-    }
-    
+
+    setLoading(DOM.submitButton, true, 'Saving...');
     try {
-        const newEvent = await addEvent(formData);
-        closeModal();
-        events = await loadEventsFromAPI();
-        filterEvents();
-        showToast('Event "' + newEvent.title + '" added successfully!', 'success');
-        logAnalytics('EVENT_ADDED_SUCCESS', { eventId: newEvent.id });
-    } catch (error) {
-        showToast(error.message || 'Failed to add event. Please try again.', 'error');
-        console.error('Error adding event:', error);
-    } finally {
-        setSubmitLoading(false);
-    }
-}
-
-function updateCharCount() {
-    DOM.charCount.textContent = DOM.description.value.length;
-}
-
-function handleKeyboardNavigation(e) {
-    if (!DOM.modal.classList.contains('open')) return;
-
-    if (e.key === 'Escape') {
-        e.preventDefault();
-        closeModal();
-        return;
-    }
-
-    if (e.key === 'Tab') {
-        const focusable = DOM.modal.querySelectorAll('button, input, select, textarea');
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-
-        if (e.shiftKey && document.activeElement === first) {
-            e.preventDefault();
-            last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-            e.preventDefault();
-            first.focus();
+        const auth = await verifyAdminPassword(data.password);
+        if (auth.networkError) throw new Error('Unable to verify the admin password. Please check your connection and try again.');
+        if (!auth.valid) {
+            DOM.password.classList.add('error');
+            DOM.password.setAttribute('aria-invalid', 'true');
+            DOM.passwordError.textContent = 'Invalid admin password.';
+            showToast('Invalid admin password.', 'error');
+            return;
         }
-        return;
-    }
-
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (!DOM.submitButton.disabled) {
-            DOM.form.requestSubmit();
-        }
-    }
-}
-
-// ========================================
-// Initialization
-// ========================================
-
-async function init() {
-    const today = new Date().toISOString().split('T')[0];
-    DOM.date.min = today;
-    DOM.date.value = today;
-
-    setupEventListeners();
-
-    try {
+        const result = await addEvent(data);
         events = await loadEventsFromAPI();
-        filteredEvents = events.slice();
+        closeModal();
         renderEvents();
-
-        logAnalytics('PAGE_LOAD', { eventCount: events.length });
-
-        console.log('\uD83D\uDCDA Bookstore Events App initialized');
-        console.log('\uD83D\uDCCA ' + events.length + ' events loaded from database');
-        console.log('\uD83D\uDD10 Using environment-based admin authentication');
+        showToast(`Event "${result.event?.title || data.title}" added successfully.`, 'success');
+        logAnalytics('ADD_EVENT', { eventId: result.event?.id });
     } catch (error) {
-        console.error('Failed to load events:', error);
-        events = [];
-        filteredEvents = [];
-        DOM.loadingSpinner.hidden = true;
-        DOM.emptyState.hidden = false;
-        showToast('Unable to load events. Please try again.', 'error');
+        console.error('Add event error:', error);
+        showToast(error.message || 'Unable to add the event. Please try again.', 'error');
+    } finally {
+        setLoading(DOM.submitButton, false);
+    }
+}
+
+async function loadWithRetry() {
+    DOM.loadingSpinner.hidden = false;
+    DOM.emptyState.hidden = true;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+            events = await loadEventsFromAPI();
+            renderEvents();
+            return;
+        } catch (error) {
+            if (attempt === 2) {
+                console.error('Failed to load events:', error);
+                DOM.loadingSpinner.hidden = true;
+                DOM.emptyState.hidden = false;
+                DOM.emptyTitle.textContent = 'Unable to load events';
+                DOM.emptyDescription.textContent = 'Please check your internet connection and try again.';
+                showToast('Unable to load events. Please try again.', 'error');
+                return;
+            }
+            await new Promise(resolve => setTimeout(resolve, 500 * 2 ** attempt));
+        }
     }
 }
 
 function setupEventListeners() {
-    DOM.searchInput.addEventListener('input', filterEvents);
-    
+    DOM.searchInput.addEventListener('input', renderEvents);
     DOM.clearSearch.addEventListener('click', () => {
         DOM.searchInput.value = '';
-        DOM.clearSearch.classList.remove('visible');
-        filterEvents();
         DOM.searchInput.focus();
+        renderEvents();
     });
-    
-    DOM.categoryFilter.addEventListener('change', filterEvents);
-    
+    DOM.categoryFilter.addEventListener('change', renderEvents);
+    DOM.statusButtons.forEach(button => button.addEventListener('click', () => setStatusFilter(button.dataset.status)));
     DOM.openModalBtn.addEventListener('click', openModal);
     DOM.closeModalBtn.addEventListener('click', closeModal);
     DOM.cancelModalBtn.addEventListener('click', closeModal);
-    
-    DOM.modal.addEventListener('click', (e) => {
-        if (e.target === DOM.modal) closeModal();
-    });
-    
+    DOM.modal.addEventListener('click', event => { if (event.target === DOM.modal) closeModal(); });
     DOM.form.addEventListener('submit', handleFormSubmit);
-    DOM.description.addEventListener('input', updateCharCount);
-    document.addEventListener('keydown', handleKeyboardNavigation);
+    DOM.description.addEventListener('input', () => { DOM.charCount.textContent = DOM.description.value.length; });
+    document.addEventListener('keydown', event => {
+        if (!DOM.modal.classList.contains('open')) return;
+        if (event.key === 'Escape') { event.preventDefault(); closeModal(); return; }
+        if (event.key === 'Tab') {
+            const focusable = [...DOM.modal.querySelectorAll('button, input, select, textarea')].filter(el => !el.disabled);
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (!first || !last) return;
+            if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+            else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+        }
+    });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners();
+    loadWithRetry();
+    logAnalytics('PAGE_LOAD');
+});
