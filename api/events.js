@@ -87,7 +87,11 @@ function getOrCreateParticipantId(req, res) {
 }
 
 async function supabaseRequest(path, options = {}) {
-    const url = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
+    // Accept either the normal Supabase project URL or a URL that was
+    // accidentally saved with /rest/v1 appended in Vercel env variables.
+    let url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+    url = url.replace(/\/rest\/v1$/i, '');
+
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
     if (!url || !key) {
