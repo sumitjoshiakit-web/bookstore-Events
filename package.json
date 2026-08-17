@@ -7,7 +7,7 @@
     "dev": "vercel dev",
     "build": "echo \"Build complete\"",
     "start": "vercel start",
-    "lint": "eslint script.js"
+    "lint": "eslint app.js"
   },
   "keywords": [
     "bookstore",
