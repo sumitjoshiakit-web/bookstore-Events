@@ -114,6 +114,12 @@ function validIsoDateTime(value) {
     return !Number.isNaN(new Date(value).getTime());
 }
 
+function getLegacyDateTimeParts(value) {
+    const match = typeof value === 'string' ? value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})(?::\d{2})?/) : null;
+    if (!match) return null;
+    return { date: match[1], time: match[2] };
+}
+
 function validateEvent(body) {
     const title = clean(body.title, 100);
     const venue = clean(body.venue, 100);
@@ -145,7 +151,10 @@ function validateEvent(body) {
         return { error: 'Featured person name and role are required for a featured event' };
     }
 
-    return { title, venue, startsAt, endsAt, category, description, isFeatured, guestName, guestRole };
+    const legacyParts = getLegacyDateTimeParts(startsAt);
+    if (!legacyParts) return { error: 'Invalid start date/time format' };
+
+    return { title, venue, startsAt, endsAt, category, description, isFeatured, guestName, guestRole, legacyParts };
 }
 
 module.exports = async function handler(req, res) {
@@ -227,8 +236,9 @@ module.exports = async function handler(req, res) {
                 id: randomUUID(),
                 title: validation.title,
                 venue: validation.venue,
-                // Legacy column: the existing database still requires date.
-                date: validation.startsAt.slice(0, 10),
+                // Legacy columns: the existing database still requires date and time.
+                date: validation.legacyParts.date,
+                time: validation.legacyParts.time,
                 starts_at: validation.startsAt,
                 ends_at: validation.endsAt,
                 category: validation.category,
@@ -271,12 +281,14 @@ module.exports = async function handler(req, res) {
                 const row = (await current.json())[0];
                 const starts = body.starts_at ?? row?.starts_at;
                 const ends = body.ends_at ?? row?.ends_at;
+                const legacyParts = getLegacyDateTimeParts(starts);
 
-                if (!validIsoDateTime(starts) || !validIsoDateTime(ends) || new Date(ends) <= new Date(starts)) {
+                if (!validIsoDateTime(starts) || !validIsoDateTime(ends) || new Date(ends) <= new Date(starts) || !legacyParts) {
                     return json(res, 400, { error: 'End date and time must be after the start date and time' });
                 }
 
-                updates.date = starts.slice(0, 10);
+                updates.date = legacyParts.date;
+                updates.time = legacyParts.time;
                 updates.starts_at = starts;
                 updates.ends_at = ends;
             }
