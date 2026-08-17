@@ -78,7 +78,7 @@ function validateEvent(body) {
     if (!validIsoDateTime(startsAt) || !validIsoDateTime(endsAt)) return { error: 'Valid start and end date/time are required' };
     if (new Date(endsAt) <= new Date(startsAt)) return { error: 'End date and time must be after the start date and time' };
     if (!ALLOWED_CATEGORIES.has(category)) return { error: 'Invalid category' };
-    if (isFeatured && (!guestName || !guestRole)) return { error: 'Featured person name and role are required for a featured event' };
+    if (isFeatured && (!guestName || !guestRole)) return { error: 'Featured person name and role are required for a featured event' });
     return { title, venue, startsAt, endsAt, category, description, isFeatured, guestName, guestRole };
 }
 
@@ -111,7 +111,22 @@ export default async function handler(req, res) {
             if (!requireAdmin(req, res)) return;
             const validation = validateEvent(body);
             if (validation.error) return json(res, 400, { error: validation.error });
-            const row = { id: crypto.randomUUID(), title: validation.title, venue: validation.venue, starts_at: validation.startsAt, ends_at: validation.endsAt, category: validation.category, description: validation.description, is_featured: validation.isFeatured, featured_person_name: validation.isFeatured ? validation.guestName : null, featured_person_role: validation.isFeatured ? validation.guestRole : null, participants: 0 };
+            // The legacy `date` column is still NOT NULL in the existing events table.
+            // Keep it synchronized with the start date while the application uses starts_at/ends_at for lifecycle logic.
+            const row = {
+                id: crypto.randomUUID(),
+                title: validation.title,
+                venue: validation.venue,
+                date: validation.startsAt.slice(0, 10),
+                starts_at: validation.startsAt,
+                ends_at: validation.endsAt,
+                category: validation.category,
+                description: validation.description,
+                is_featured: validation.isFeatured,
+                featured_person_name: validation.isFeatured ? validation.guestName : null,
+                featured_person_role: validation.isFeatured ? validation.guestRole : null,
+                participants: 0
+            };
             const response = await supabaseRequest('events', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify(row) });
             if (!response.ok) return json(res, 502, await databaseError(response, 'INSERT'));
             return json(res, 201, { event: mapEvent((await response.json())[0]) });
@@ -129,7 +144,9 @@ export default async function handler(req, res) {
                 const row = (await current.json())[0];
                 const starts = body.starts_at ?? row?.starts_at, ends = body.ends_at ?? row?.ends_at;
                 if (!validIsoDateTime(starts) || !validIsoDateTime(ends) || new Date(ends) <= new Date(starts)) return json(res, 400, { error: 'End date and time must be after the start date and time' });
-                updates.starts_at = starts; updates.ends_at = ends;
+                updates.date = starts.slice(0, 10);
+                updates.starts_at = starts;
+                updates.ends_at = ends;
             }
             if (body.participants !== undefined) updates.participants = Math.max(0, Number(body.participants) || 0);
             if (!Object.keys(updates).length) return json(res, 400, { error: 'No valid fields to update' });
