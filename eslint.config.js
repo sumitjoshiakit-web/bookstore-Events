@@ -3,10 +3,8 @@ import globals from 'globals';
 
 export default [
     eslint.configs.recommended,
-
     {
-        files: ['script.js'],
-
+        files: ['app.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'script',
@@ -14,7 +12,6 @@ export default [
                 ...globals.browser
             }
         },
-
         rules: {
             'no-unused-vars': 'error',
             'no-undef': 'error',
