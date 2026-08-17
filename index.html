@@ -1,141 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Independent Bookstore Events</title>
-    <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="status.css" />
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Independent Bookstore Events</title>
+<link rel="stylesheet" href="style.css" /><link rel="stylesheet" href="status.css" />
 </head>
 <body>
-    <div class="app-wrapper">
-        <header class="app-header" role="banner">
-            <div class="header-content">
-                <div class="logo-container">
-                    <img src="bookstore-logo.svg" alt="Independent Bookstore Logo" class="logo" />
-                    <h1 class="app-title">Independent Bookstore</h1>
-                </div>
-                <p class="app-subtitle">Discover, Participate &amp; Host Events</p>
-            </div>
-        </header>
-
-        <main class="app-main" role="main">
-            <section class="controls-section" aria-label="Search and filter events">
-                <div class="controls-wrapper">
-                    <div class="search-wrapper">
-                        <span class="search-icon" aria-hidden="true">&#128269;</span>
-                        <input type="search" id="searchInput" class="search-input" placeholder="Search events..." aria-label="Search events" autocomplete="off" />
-                        <button class="search-clear" id="clearSearch" type="button" aria-label="Clear search">&#10005;</button>
-                    </div>
-
-                    <div class="filter-wrapper">
-                        <label for="categoryFilter" class="filter-label">Category</label>
-                        <select id="categoryFilter" class="filter-select" aria-label="Filter events by category">
-                            <option value="all">All Categories</option>
-                            <option value="book-club">Book Club</option>
-                            <option value="author-event">Author Event</option>
-                            <option value="workshop">Workshop</option>
-                            <option value="reading">Reading</option>
-                            <option value="signing">Book Signing</option>
-                        </select>
-                    </div>
-
-                    <button id="openAddEventModal" class="add-event-btn" type="button" aria-label="Add new event">
-                        <span aria-hidden="true">&#43;</span> Add Event
-                    </button>
-                </div>
-
-                <div class="status-filter-bar" role="group" aria-label="Filter events by status">
-                    <button type="button" class="status-filter active" data-status="all" aria-pressed="true">All</button>
-                    <button type="button" class="status-filter" data-status="past" aria-pressed="false">Past</button>
-                    <button type="button" class="status-filter" data-status="current" aria-pressed="false">Current</button>
-                    <button type="button" class="status-filter" data-status="upcoming" aria-pressed="false">Upcoming</button>
-                </div>
-            </section>
-
-            <section class="events-section" aria-labelledby="eventsHeading">
-                <h2 id="eventsHeading" class="visually-hidden">Bookstore events</h2>
-                <div id="eventsContainer" class="events-sections"></div>
-                <div id="emptyState" class="empty-state" role="status" aria-live="polite" hidden>
-                    <p class="empty-icon" aria-hidden="true">&#128231;</p>
-                    <h2 id="emptyTitle" class="empty-title">No Events Found</h2>
-                    <p id="emptyDescription" class="empty-description">Try adjusting your search or filter criteria.</p>
-                </div>
-                <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite" hidden>
-                    <div class="spinner" aria-hidden="true"></div>
-                    <p>Loading events...</p>
-                </div>
-            </section>
-        </main>
-
-        <footer class="app-footer" role="contentinfo">
-            <p>&copy; 2026 Independent Bookstore. All rights reserved.</p>
-            <p class="footer-telemetry">&#128202; Analytics: User interactions are being tracked</p>
-        </footer>
-    </div>
-
-    <div id="addEventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle" class="modal-title">Add New Event</h2>
-                <button id="closeModal" class="modal-close" type="button" aria-label="Close modal">&#10005;</button>
-            </div>
-            <form id="addEventForm" novalidate>
-                <div class="form-group">
-                    <label for="eventTitle">Event Title <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="text" id="eventTitle" class="form-input" required aria-required="true" aria-describedby="titleError" autocomplete="off" placeholder="e.g., Mystery Book Club Night" maxlength="100" />
-                    <span class="form-error" id="titleError" role="alert"></span>
-                </div>
-                <div class="form-group">
-                    <label for="eventVenue">Venue <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="text" id="eventVenue" class="form-input" required aria-required="true" aria-describedby="venueError" autocomplete="off" placeholder="e.g., Main Store - 123 Book St" maxlength="100" />
-                    <span class="form-error" id="venueError" role="alert"></span>
-                </div>
-                <div class="form-row">
-                    <div class="form-group half">
-                        <label for="eventDate">Date <span aria-hidden="true" class="required-star">*</span></label>
-                        <input type="date" id="eventDate" class="form-input" required aria-required="true" aria-describedby="dateError" />
-                        <span class="form-error" id="dateError" role="alert"></span>
-                    </div>
-                    <div class="form-group half">
-                        <label for="eventTime">Time <span aria-hidden="true" class="required-star">*</span></label>
-                        <input type="time" id="eventTime" class="form-input" required aria-required="true" aria-describedby="timeError" />
-                        <span class="form-error" id="timeError" role="alert"></span>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="eventCategory">Category <span aria-hidden="true" class="required-star">*</span></label>
-                    <select id="eventCategory" class="form-input" required aria-required="true" aria-describedby="categoryError">
-                        <option value="">Select a category</option>
-                        <option value="book-club">Book Club</option>
-                        <option value="author-event">Author Event</option>
-                        <option value="workshop">Workshop</option>
-                        <option value="reading">Reading</option>
-                        <option value="signing">Book Signing</option>
-                    </select>
-                    <span class="form-error" id="categoryError" role="alert"></span>
-                </div>
-                <div class="form-group">
-                    <label for="eventDescription">Description <span aria-hidden="true" class="required-star">*</span></label>
-                    <textarea id="eventDescription" class="form-input" required aria-required="true" aria-describedby="descriptionError charCount" maxlength="500" rows="4" placeholder="Describe your event..."></textarea>
-                    <span class="form-error" id="descriptionError" role="alert"></span>
-                    <span class="char-count"><span id="charCount">0</span>/500</span>
-                </div>
-                <div class="form-group">
-                    <label for="adminPassword">Admin Password <span aria-hidden="true" class="required-star">*</span></label>
-                    <input type="password" id="adminPassword" class="form-input" required aria-required="true" aria-describedby="passwordError" autocomplete="current-password" placeholder="Enter admin password" />
-                    <span class="form-error" id="passwordError" role="alert"></span>
-                    <small class="form-hint">Admin authentication is required to add events.</small>
-                </div>
-                <div class="form-actions">
-                    <button type="button" id="cancelModal" class="btn-secondary">Cancel</button>
-                    <button type="submit" id="submitEvent" class="btn-primary">Add Event</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="toast" class="toast" role="alert" aria-live="polite" hidden><span id="toastMessage"></span></div>
-    <script src="script.js"></script>
-</body>
-</html>
+<div class="app-wrapper">
+<header class="app-header" role="banner"><div class="header-content"><div class="logo-container"><img src="bookstore-logo.svg" alt="Independent Bookstore Logo" class="logo" /><h1 class="app-title">Independent Bookstore</h1></div><p class="app-subtitle">Discover, Participate &amp; Host Events</p></div></header>
+<main class="app-main" role="main">
+<section class="controls-section" aria-label="Search and filter events"><div class="controls-wrapper">
+<div class="search-wrapper"><span class="search-icon" aria-hidden="true">&#128269;</span><input type="search" id="searchInput" class="search-input" placeholder="Search events..." aria-label="Search events" autocomplete="off" /><button class="search-clear" id="clearSearch" type="button" aria-label="Clear search">&#10005;</button></div>
+<div class="filter-wrapper"><label for="categoryFilter" class="filter-label">Category</label><select id="categoryFilter" class="filter-select" aria-label="Filter events by category"><option value="all">All Categories</option><option value="book-club">Book Club</option><option value="author-event">Author Event</option><option value="workshop">Workshop</option><option value="reading">Reading</option><option value="signing">Book Signing</option></select></div>
+<button id="openAddEventModal" class="add-event-btn" type="button" aria-label="Add new event"><span aria-hidden="true">&#43;</span> Add Event</button>
+</div><div class="status-filter-bar" role="group" aria-label="Filter events by status"><button type="button" class="status-filter active" data-status="all" aria-pressed="true">All</button><button type="button" class="status-filter" data-status="past" aria-pressed="false">Past</button><button type="button" class="status-filter" data-status="current" aria-pressed="false">Current</button><button type="button" class="status-filter" data-status="upcoming" aria-pressed="false">Upcoming</button></div></section>
+<section class="events-section" aria-labelledby="eventsHeading"><h2 id="eventsHeading" class="visually-hidden">Bookstore events</h2><div id="eventsContainer" class="events-sections"></div><div id="emptyState" class="empty-state" role="status" aria-live="polite" hidden><p class="empty-icon" aria-hidden="true">&#128231;</p><h2 id="emptyTitle" class="empty-title">No Events Found</h2><p id="emptyDescription" class="empty-description">Try adjusting your search or filter criteria.</p></div><div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite" hidden><div class="spinner" aria-hidden="true"></div><p>Loading events...</p></div></section>
+</main><footer class="app-footer" role="contentinfo"><p>&copy; 2026 Independent Bookstore. All rights reserved.</p><p class="footer-telemetry">&#128202; Analytics: User interactions are being tracked</p></footer>
+</div>
+<div id="addEventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true"><div class="modal-content"><div class="modal-header"><h2 id="modalTitle" class="modal-title">Add New Event</h2><button id="closeModal" class="modal-close" type="button" aria-label="Close modal">&#10005;</button></div>
+<form id="addEventForm" novalidate>
+<div class="form-group"><label for="eventTitle">Event Title <span aria-hidden="true" class="required-star">*</span></label><input type="text" id="eventTitle" class="form-input" required aria-required="true" aria-describedby="titleError" autocomplete="off" maxlength="100" placeholder="e.g., Mystery Book Club Night" /><span class="form-error" id="titleError" role="alert"></span></div>
+<div class="form-group"><label for="eventVenue">Venue <span aria-hidden="true" class="required-star">*</span></label><input type="text" id="eventVenue" class="form-input" required aria-required="true" aria-describedby="venueError" autocomplete="off" maxlength="100" placeholder="e.g., Main Store - 123 Book St" /><span class="form-error" id="venueError" role="alert"></span></div>
+<div class="form-row"><div class="form-group half"><label for="eventStartDate">Start Date *</label><input type="date" id="eventStartDate" class="form-input" required aria-required="true" aria-describedby="startDateError" /><span class="form-error" id="startDateError" role="alert"></span></div><div class="form-group half"><label for="eventStartTime">Start Time *</label><input type="time" id="eventStartTime" class="form-input" required aria-required="true" aria-describedby="startTimeError" /><span class="form-error" id="startTimeError" role="alert"></span></div></div>
+<div class="form-row"><div class="form-group half"><label for="eventEndDate">End Date *</label><input type="date" id="eventEndDate" class="form-input" required aria-required="true" aria-describedby="endDateError" /><span class="form-error" id="endDateError" role="alert"></span></div><div class="form-group half"><label for="eventEndTime">End Time *</label><input type="time" id="eventEndTime" class="form-input" required aria-required="true" aria-describedby="endTimeError" /><span class="form-error" id="endTimeError" role="alert"></span></div></div>
+<div class="form-group"><label for="eventCategory">Category *</label><select id="eventCategory" class="form-input" required aria-required="true" aria-describedby="categoryError"><option value="">Select a category</option><option value="book-club">Book Club</option><option value="author-event">Author Event</option><option value="workshop">Workshop</option><option value="reading">Reading</option><option value="signing">Book Signing</option></select><span class="form-error" id="categoryError" role="alert"></span></div>
+<div class="form-group"><label for="eventDescription">Description *</label><textarea id="eventDescription" class="form-input" required aria-required="true" aria-describedby="descriptionError charCount" maxlength="500" rows="4" placeholder="Describe your event..."></textarea><span class="form-error" id="descriptionError" role="alert"></span><span class="char-count"><span id="charCount">0</span>/500</span></div>
+<fieldset class="form-group featured-fieldset"><legend>Featured Event</legend><label class="checkbox-label"><input type="checkbox" id="eventFeatured" /> <span>Mark this as a featured event</span></label><div id="featuredGuestFields" hidden><div class="form-group"><label for="featuredPersonName">Featured Person Name *</label><input type="text" id="featuredPersonName" class="form-input" maxlength="100" aria-describedby="guestNameError" placeholder="e.g., Dr. Jane Smith" /><span class="form-error" id="guestNameError" role="alert"></span></div><div class="form-group"><label for="featuredPersonRole">Role / Title *</label><input type="text" id="featuredPersonRole" class="form-input" maxlength="100" aria-describedby="guestRoleError" placeholder="e.g., Chief Guest" /><span class="form-error" id="guestRoleError" role="alert"></span></div></div></fieldset>
+<div class="form-group"><label for="adminPassword">Admin Password *</label><input type="password" id="adminPassword" class="form-input" required aria-required="true" aria-describedby="passwordError" autocomplete="current-password" placeholder="Enter admin password" /><span class="form-error" id="passwordError" role="alert"></span><small class="form-hint">Admin authentication is required to add events.</small></div>
+<div class="form-actions"><button type="button" id="cancelModal" class="btn-secondary">Cancel</button><button type="submit" id="submitEvent" class="btn-primary">Add Event</button></div>
+</form></div></div>
+<div id="toast" class="toast" role="alert" aria-live="polite" hidden><span id="toastMessage"></span></div>
+<script src="script.js"></script>
+</body></html>
