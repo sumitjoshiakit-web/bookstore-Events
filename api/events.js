@@ -28,9 +28,7 @@ function getAdminPassword(req) {
         ? req.headers.authorization
         : '';
 
-    if (auth.startsWith('Bearer ')) {
-        return auth.slice(7);
-    }
+    if (auth.startsWith('Bearer ')) return auth.slice(7);
 
     const body = req.body || {};
     return typeof body.password === 'string' ? body.password : '';
@@ -72,9 +70,7 @@ function getOrCreateParticipantId(req, res) {
     const cookies = parseCookies(req);
     const existing = cookies[PARTICIPANT_COOKIE];
 
-    if (isUuid(existing)) {
-        return existing;
-    }
+    if (isUuid(existing)) return existing;
 
     const participantId = crypto.randomUUID();
     const cookie = [
@@ -123,20 +119,29 @@ function mapEvent(row) {
     };
 }
 
+async function databaseError(response, operation) {
+    const details = await response.text();
+    console.error(`Supabase ${operation} error:`, details);
+
+    let parsed = null;
+    try { parsed = JSON.parse(details); } catch (_) {}
+
+    return {
+        error: `Database ${operation.toLowerCase()} failed`,
+        details: parsed?.message || parsed?.hint || parsed?.details || details.slice(0, 500)
+    };
+}
+
 export default async function handler(req, res) {
     try {
         if (req.method === 'GET') {
-            // Keep this query limited to the columns used by the application.
-            // In particular, do not require an optional created_at column just to sort events.
             const response = await supabaseRequest(
                 'events?select=id,title,venue,date,time,category,description,participants&order=date.asc,time.asc',
                 { method: 'GET' }
             );
 
             if (!response.ok) {
-                const details = await response.text();
-                console.error('Supabase GET error:', details);
-                return json(res, 502, { error: 'Database read failed' });
+                return json(res, 502, await databaseError(response, 'READ'));
             }
 
             const rows = await response.json();
@@ -148,38 +153,24 @@ export default async function handler(req, res) {
 
             if (body.action === 'participate') {
                 const eventId = clean(body.eventId, 100);
-                if (!isUuid(eventId)) {
-                    return json(res, 400, { error: 'Valid event id is required' });
-                }
+                if (!isUuid(eventId)) return json(res, 400, { error: 'Valid event id is required' });
 
                 const participantId = getOrCreateParticipantId(req, res);
-
                 const eventResponse = await supabaseRequest(
                     'events?id=eq.' + encodeURIComponent(eventId) + '&select=id,participants',
                     { method: 'GET' }
                 );
 
-                if (!eventResponse.ok) {
-                    console.error('Supabase event lookup error:', await eventResponse.text());
-                    return json(res, 502, { error: 'Database read failed' });
-                }
+                if (!eventResponse.ok) return json(res, 502, await databaseError(eventResponse, 'READ'));
 
                 const eventRows = await eventResponse.json();
-                if (!eventRows.length) {
-                    return json(res, 404, { error: 'Event not found' });
-                }
+                if (!eventRows.length) return json(res, 404, { error: 'Event not found' });
 
-                const participationResponse = await supabaseRequest(
-                    'event_participations',
-                    {
-                        method: 'POST',
-                        headers: { Prefer: 'return=representation' },
-                        body: JSON.stringify({
-                            event_id: eventId,
-                            participant_id: participantId
-                        })
-                    }
-                );
+                const participationResponse = await supabaseRequest('event_participations', {
+                    method: 'POST',
+                    headers: { Prefer: 'return=representation' },
+                    body: JSON.stringify({ event_id: eventId, participant_id: participantId })
+                });
 
                 if (participationResponse.status === 409) {
                     return json(res, 409, {
@@ -189,8 +180,7 @@ export default async function handler(req, res) {
                 }
 
                 if (!participationResponse.ok) {
-                    console.error('Supabase participation insert error:', await participationResponse.text());
-                    return json(res, 502, { error: 'Participation could not be recorded' });
+                    return json(res, 502, await databaseError(participationResponse, 'PARTICIPATION INSERT'));
                 }
 
                 const updateResponse = await supabaseRequest(
@@ -198,22 +188,14 @@ export default async function handler(req, res) {
                     {
                         method: 'PATCH',
                         headers: { Prefer: 'return=representation' },
-                        body: JSON.stringify({
-                            participants: Number(eventRows[0].participants) + 1
-                        })
+                        body: JSON.stringify({ participants: Number(eventRows[0].participants) + 1 })
                     }
                 );
 
-                if (!updateResponse.ok) {
-                    console.error('Supabase participant count update error:', await updateResponse.text());
-                    return json(res, 502, { error: 'Participation was recorded but count update failed' });
-                }
+                if (!updateResponse.ok) return json(res, 502, await databaseError(updateResponse, 'PARTICIPANT COUNT UPDATE'));
 
                 const updatedRows = await updateResponse.json();
-                return json(res, 201, {
-                    alreadyParticipated: false,
-                    event: mapEvent(updatedRows[0])
-                });
+                return json(res, 201, { alreadyParticipated: false, event: mapEvent(updatedRows[0]) });
             }
 
             if (!requireAdmin(req, res)) return;
@@ -231,9 +213,7 @@ export default async function handler(req, res) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) {
                 return json(res, 400, { error: 'Invalid date or time' });
             }
-            if (!ALLOWED_CATEGORIES.has(category)) {
-                return json(res, 400, { error: 'Invalid category' });
-            }
+            if (!ALLOWED_CATEGORIES.has(category)) return json(res, 400, { error: 'Invalid category' });
 
             const row = {
                 id: crypto.randomUUID(),
@@ -252,10 +232,7 @@ export default async function handler(req, res) {
                 body: JSON.stringify(row)
             });
 
-            if (!response.ok) {
-                console.error('Supabase POST error:', await response.text());
-                return json(res, 502, { error: 'Database insert failed' });
-            }
+            if (!response.ok) return json(res, 502, await databaseError(response, 'INSERT'));
 
             const rows = await response.json();
             return json(res, 201, { event: mapEvent(rows[0]) });
@@ -267,22 +244,15 @@ export default async function handler(req, res) {
             const body = req.body || {};
             const id = clean(body.id, 100);
             const participants = Number(body.participants) > 0 ? 1 : 0;
-
             if (!id) return json(res, 400, { error: 'Event id is required' });
 
-            const response = await supabaseRequest(
-                'events?id=eq.' + encodeURIComponent(id),
-                {
-                    method: 'PATCH',
-                    headers: { Prefer: 'return=representation' },
-                    body: JSON.stringify({ participants })
-                }
-            );
+            const response = await supabaseRequest('events?id=eq.' + encodeURIComponent(id), {
+                method: 'PATCH',
+                headers: { Prefer: 'return=representation' },
+                body: JSON.stringify({ participants })
+            });
 
-            if (!response.ok) {
-                console.error('Supabase PATCH error:', await response.text());
-                return json(res, 502, { error: 'Database update failed' });
-            }
+            if (!response.ok) return json(res, 502, await databaseError(response, 'UPDATE'));
 
             const rows = await response.json();
             if (!rows.length) return json(res, 404, { error: 'Event not found' });
@@ -296,18 +266,12 @@ export default async function handler(req, res) {
             const id = clean(url.searchParams.get('id') || '', 100);
             if (!id) return json(res, 400, { error: 'Event id is required' });
 
-            const response = await supabaseRequest(
-                'events?id=eq.' + encodeURIComponent(id),
-                {
-                    method: 'DELETE',
-                    headers: { Prefer: 'return=representation' }
-                }
-            );
+            const response = await supabaseRequest('events?id=eq.' + encodeURIComponent(id), {
+                method: 'DELETE',
+                headers: { Prefer: 'return=representation' }
+            });
 
-            if (!response.ok) {
-                console.error('Supabase DELETE error:', await response.text());
-                return json(res, 502, { error: 'Database delete failed' });
-            }
+            if (!response.ok) return json(res, 502, await databaseError(response, 'DELETE'));
 
             const rows = await response.json();
             if (!rows.length) return json(res, 404, { error: 'Event not found' });
