@@ -24,7 +24,7 @@
                     <div class="search-wrapper">
                         <span class="search-icon" aria-hidden="true">&#128269;</span>
                         <input type="search" id="searchInput" class="search-input" placeholder="Search events..." aria-label="Search events" autocomplete="off" />
-                        <button class="search-clear" id="clearSearch" aria-label="Clear search">&#10005;</button>
+                        <button class="search-clear" id="clearSearch" type="button" aria-label="Clear search">&#10005;</button>
                     </div>
 
                     <div class="filter-wrapper">
@@ -39,19 +39,28 @@
                         </select>
                     </div>
 
-                    <button id="openAddEventModal" class="add-event-btn" aria-label="Add new event">
+                    <button id="openAddEventModal" class="add-event-btn" type="button" aria-label="Add new event">
                         <span aria-hidden="true">&#43;</span> Add Event
                     </button>
                 </div>
+
+                <div class="status-filter-bar" role="group" aria-label="Filter events by status">
+                    <button type="button" class="status-filter active" data-status="all" aria-pressed="true">All</button>
+                    <button type="button" class="status-filter" data-status="past" aria-pressed="false">Past</button>
+                    <button type="button" class="status-filter" data-status="current" aria-pressed="false">Current</button>
+                    <button type="button" class="status-filter" data-status="upcoming" aria-pressed="false">Upcoming</button>
+                </div>
             </section>
 
-            <section aria-label="Events list">
-                <div id="eventsContainer" class="events-grid" role="list"></div>
+            <section class="events-section" aria-labelledby="eventsHeading">
+                <h2 id="eventsHeading" class="visually-hidden">Bookstore events</h2>
+
+                <div id="eventsContainer" class="events-sections"></div>
 
                 <div id="emptyState" class="empty-state" role="status" aria-live="polite" hidden>
                     <p class="empty-icon" aria-hidden="true">&#128231;</p>
-                    <h2 class="empty-title">No Events Found</h2>
-                    <p class="empty-description">Try adjusting your search or filter criteria.</p>
+                    <h2 id="emptyTitle" class="empty-title">No Events Found</h2>
+                    <p id="emptyDescription" class="empty-description">Try adjusting your search or filter criteria.</p>
                 </div>
 
                 <div id="loadingSpinner" class="loading-spinner" role="status" aria-live="polite" hidden>
@@ -67,11 +76,11 @@
         </footer>
     </div>
 
-    <div id="addEventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div id="addEventModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="modalTitle" class="modal-title">Add New Event</h2>
-                <button id="closeModal" class="modal-close" aria-label="Close modal">&#10005;</button>
+                <button id="closeModal" class="modal-close" type="button" aria-label="Close modal">&#10005;</button>
             </div>
 
             <form id="addEventForm" novalidate>
@@ -140,6 +149,5 @@
     </div>
 
     <script src="script.js"></script>
-    <script src="database.js"></script>
 </body>
 </html>
