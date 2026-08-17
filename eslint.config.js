@@ -4,7 +4,7 @@ import globals from 'globals';
 export default [
     eslint.configs.recommended,
     {
-        files: ['app.js'],
+        files: ['app.js', 'validation.js'],
         languageOptions: {
             ecmaVersion: 'latest',
             sourceType: 'script',
