@@ -126,13 +126,16 @@ function mapEvent(row) {
 export default async function handler(req, res) {
     try {
         if (req.method === 'GET') {
+            // Keep this query limited to the columns used by the application.
+            // In particular, do not require an optional created_at column just to sort events.
             const response = await supabaseRequest(
-                'events?select=*&order=date.asc,time.asc,created_at.asc',
+                'events?select=id,title,venue,date,time,category,description,participants&order=date.asc,time.asc',
                 { method: 'GET' }
             );
 
             if (!response.ok) {
-                console.error('Supabase GET error:', await response.text());
+                const details = await response.text();
+                console.error('Supabase GET error:', details);
                 return json(res, 502, { error: 'Database read failed' });
             }
 
